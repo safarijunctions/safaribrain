@@ -1,0 +1,19 @@
+{
+  "name": "safaribrain",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SafariBrain — AI-powered safari operating system for East Africa",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter @safaribrain/api dev",
+    "dev:web": "pnpm --filter @safaribrain/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "@nestjs/core", "@prisma/client", "@prisma/engines", "prisma"]
+  }
+}

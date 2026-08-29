@@ -1,0 +1,413 @@
+// SafariBrain data model — Phase 0/1 scope (Sales Operating System).
+//
+// Scope note: Section 6 of the master brief lists the full pan-platform
+// domain list (marketplace, departures, finance, operations, reviews,
+// trade...). Per the phase order in Section 7, this schema only models
+// the domains Phase 0/1 needs: Identity, CRM, Content (minimal), Pricing
+// (with an immutable snapshot), Products, Sales documents, and Platform
+// audit logging. Booking, Marketplace, Departures, Finance, Operations,
+// Communications, Reviews, and Trade are added in their respective phases
+// so we don't build half-finished tables ahead of the features that use them.
+//
+// Non-negotiable (§1.8, §6): PriceSnapshot and (later, Phase 2)
+// BookingTermsSnapshot are write-once. Nothing may update or delete a row
+// in PriceSnapshot after creation — enforced at the application layer in
+// the quotes service, since Postgres has no native "insert-only" table
+// constraint.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity (§6, §3)
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  CLIENT
+  GUIDE
+  OPERATOR
+  AGENT
+  ADMIN
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  country   String // ISO 3166-1 alpha-2, e.g. "TZ" — §1.7 country is config, not a rebuild
+  currency  String // ISO 4217, e.g. "TZS"
+  verified  Boolean  @default(false) // Trust domain (§6) collapsed onto the org for Phase 0/1
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberships   Membership[]
+  contacts      Contact[]
+  tourTemplates TourTemplate[]
+  requests      EnquiryRequest[]
+  places        Place[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships     Membership[]
+  ownedRequests   EnquiryRequest[]   @relation("RequestOwner")
+  quoteApprovals  Approval[]
+  auditLogEntries AuditLog[]
+  tasks           Task[]
+
+  @@map("users")
+}
+
+// A user's membership in an org carries their role plus scoped permission
+// grants — §3 requires finance/safety actions to need explicit grants, not
+// a single "Admin can do everything" flag.
+model Membership {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  role           UserRole
+  permissions    String[] // Permission enum values from @safaribrain/shared
+  createdAt      DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("memberships")
+}
+
+// ---------------------------------------------------------------------------
+// CRM (§6, §4.7)
+// ---------------------------------------------------------------------------
+
+enum LeadSourceChannel {
+  WEB
+  WHATSAPP
+  EMAIL
+  PHONE
+  REFERRAL
+  WALK_IN
+}
+
+enum RequestStage {
+  NEW
+  QUOTED
+  NEGOTIATING
+  BOOKED
+  COMPLETED
+  LOST
+}
+
+// A deduplicated client/prospect. One contact can raise multiple enquiries
+// over time — §10 acceptance criterion 1 ("one deduplicated contact").
+model Contact {
+  id             String   @id @default(cuid())
+  organizationId String
+  fullName       String
+  email          String?
+  phone          String?
+  whatsapp       String?
+  country        String? // traveler's home country, for nationality-based pricing/analytics
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requests     EnquiryRequest[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId, phone])
+  @@map("contacts")
+}
+
+// The "requests" table from §6 — an inbound enquiry, custom or marketplace.
+model EnquiryRequest {
+  id             String            @id @default(cuid())
+  organizationId String
+  contactId      String
+  ownerId        String? // salesperson assigned — §4.7 "team assignment"
+  source         LeadSourceChannel
+  stage          RequestStage      @default(NEW)
+  partySize      Int               @default(1)
+  budgetTier     String? // e.g. "BUDGET" | "MID" | "LUXURY" — free text for now, enum once marketplace filters land
+  preferredStart DateTime?
+  preferredEnd   DateTime?
+  interests      String[]
+  notes          String?
+  consentGiven   Boolean           @default(false) // §9 non-functional: consent/retention records
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contact      Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  owner        User?           @relation("RequestOwner", fields: [ownerId], references: [id])
+  quotes       Quote[]
+  tasks        Task[]
+  pipelineLog  PipelineEvent[]
+
+  @@index([organizationId, stage])
+  @@map("enquiry_requests")
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  requestId   String
+  assigneeId  String?
+  title       String
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  request  EnquiryRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  assignee User?          @relation(fields: [assigneeId], references: [id])
+
+  @@map("tasks")
+}
+
+// Append-only activity trail per request — powers the "visual pipeline" (§4.7)
+// and doubles as part of the audit trail for how a deal moved.
+model PipelineEvent {
+  id        String       @id @default(cuid())
+  requestId String
+  stage     RequestStage
+  note      String?
+  createdAt DateTime     @default(now())
+
+  request EnquiryRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@map("pipeline_events")
+}
+
+// ---------------------------------------------------------------------------
+// Content (§6, §4.8) — minimal: enough to price a park fee and describe a stop
+// ---------------------------------------------------------------------------
+
+model Place {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  country        String
+  kind           String // "NATIONAL_PARK" | "CONSERVATION_AREA" | "TOWN" | ...
+  description    String?
+  latitude       Float?
+  longitude      Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  feeRules     ParkFeeRule[]
+  itineraryUse ItineraryDay[]
+
+  @@map("places")
+}
+
+// ---------------------------------------------------------------------------
+// Pricing (§6, §4.5) — official-source fee governance, not scraping-as-truth
+// ---------------------------------------------------------------------------
+
+// A single priced category for a place: e.g. "Serengeti / non-resident adult
+// / vehicle / 24hr". Automated fee-change *detection* (§4.5) is a Phase 4
+// concern (needs the source-evidence + admin-approval workflow); Phase 1
+// only needs admin-entered fees with a source date so quotes can cite them.
+model ParkFeeRule {
+  id           String    @id @default(cuid())
+  placeId      String
+  label        String
+  residency    String // "RESIDENT" | "NON_RESIDENT" | "EAST_AFRICAN"
+  ageBand      String? // "ADULT" | "CHILD" | "INFANT"
+  unit         String // "PER_PERSON_PER_DAY" | "PER_VEHICLE_PER_ENTRY" | ...
+  amount       Decimal   @db.Decimal(12, 2)
+  currency     String
+  sourceUrl    String? // §4.5 "source URL, retrieval timestamp"
+  sourceAsOf   DateTime // "price as of [date]" shown to travelers — §4.5
+  effectiveFrom DateTime @default(now())
+  effectiveTo  DateTime?
+  createdAt    DateTime  @default(now())
+
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@index([placeId, residency])
+  @@map("park_fee_rules")
+}
+
+// Write-once. Frozen at the moment a quote is ACCEPTED (§1.8, §6). The
+// application layer must never UPDATE or DELETE a row here — a later edit
+// to TourTemplate/ParkFeeRule must never change what an accepted quote shows.
+model PriceSnapshot {
+  id           String   @id @default(cuid())
+  quoteId      String   @unique
+  breakdown    Json // PriceBreakdownDto shape from @safaribrain/shared
+  totalPrice   Decimal  @db.Decimal(12, 2)
+  currency     String
+  frozenAt     DateTime @default(now())
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@map("price_snapshots")
+}
+
+// ---------------------------------------------------------------------------
+// Products (§6, §4.4) — reusable itinerary building blocks
+// ---------------------------------------------------------------------------
+
+model TourTemplate {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  summary        String?
+  durationDays   Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions     TemplateVersion[]
+  quotes       Quote[]
+
+  @@map("tour_templates")
+}
+
+model TemplateVersion {
+  id             String   @id @default(cuid())
+  tourTemplateId String
+  versionNumber  Int
+  termsMarkdown  String? // cancellation terms etc. — frozen into quotes at acceptance
+  createdAt      DateTime @default(now())
+
+  tourTemplate TourTemplate   @relation(fields: [tourTemplateId], references: [id], onDelete: Cascade)
+  days         ItineraryDay[]
+
+  @@unique([tourTemplateId, versionNumber])
+  @@map("template_versions")
+}
+
+model ItineraryDay {
+  id                String  @id @default(cuid())
+  templateVersionId String
+  dayNumber         Int
+  placeId           String?
+  title             String
+  description       String?
+  mealsIncluded     String[] // "BREAKFAST" | "LUNCH" | "DINNER"
+
+  templateVersion TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  place           Place?          @relation(fields: [placeId], references: [id])
+
+  @@unique([templateVersionId, dayNumber])
+  @@map("itinerary_days")
+}
+
+// ---------------------------------------------------------------------------
+// Sales documents (§6, §4.4, §9) — quote → approval → proposal → acceptance
+// ---------------------------------------------------------------------------
+
+enum QuoteStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  ACCEPTED
+  CHANGES_REQUESTED
+  EXPIRED
+  DECLINED
+}
+
+model Quote {
+  id                String      @id @default(cuid())
+  requestId         String
+  tourTemplateId    String?
+  templateVersionId String? // pinned so a later template edit can't change what's already quoted
+  residency         String      @default("NON_RESIDENT")
+  status            QuoteStatus @default(DRAFT)
+  currency          String
+  marginPercent     Decimal     @db.Decimal(5, 2) @default(0)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  request      EnquiryRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  tourTemplate TourTemplate?    @relation(fields: [tourTemplateId], references: [id])
+  versions     QuoteVersion[]
+  approvals    Approval[]
+  priceSnapshot PriceSnapshot?
+  proposalLink ProposalLink?
+
+  @@map("quotes")
+}
+
+// Every edit to a quote creates a new version — never mutate a sent quote
+// in place (§4.7 "quote_versions").
+model QuoteVersion {
+  id         String   @id @default(cuid())
+  quoteId    String
+  versionNo  Int
+  breakdown  Json // PriceBreakdownDto — the live (mutable-until-accepted) working copy
+  totalPrice Decimal  @db.Decimal(12, 2)
+  createdAt  DateTime @default(now())
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@unique([quoteId, versionNo])
+  @@map("quote_versions")
+}
+
+// A manager approving an under-margin (or any) quote — §10 acceptance
+// criterion 4: "the approval is audited."
+model Approval {
+  id         String   @id @default(cuid())
+  quoteId    String
+  approverId String
+  decision   String // "APPROVED" | "REJECTED"
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  quote    Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  approver User  @relation(fields: [approverId], references: [id])
+
+  @@map("approvals")
+}
+
+// Public, tokenized link a client opens to view/accept a proposal — no
+// login required, per §5 "mobile, low-bandwidth, WhatsApp-first".
+model ProposalLink {
+  id          String    @id @default(cuid())
+  quoteId     String    @unique
+  token       String    @unique @default(cuid())
+  openedAt    DateTime?
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@map("proposal_links")
+}
+
+// ---------------------------------------------------------------------------
+// Platform (§6) — audit log
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String // e.g. "quote.approve", "quote.accept"
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("audit_log")
+}
