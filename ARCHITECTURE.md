@@ -49,6 +49,27 @@ real browser session against the web app.
 - Web app: CRM inbox, request detail with an inline quote builder, and the
   public proposal/accept page — React + Vite + Tailwind + TanStack
   Router/Query, per §2.
+- **Admin Portal — Integrations and Team** (§4.9, resolves the payment/AI
+  provider decision below): an `Integration` model
+  (`organizationId`, `provider`, `category`, `config`, `secrets`, `enabled`)
+  lets an admin add Stripe/M-Pesa/Tigo Pesa/Airtel Money/MTN
+  MoMo/WhatsApp/SMS/SMTP/LLM credentials from the running app instead of the
+  team hardcoding a provider at build time. `secrets` is write-only —
+  `IntegrationsService` never returns saved secret values, only a
+  `secretsConfigured` boolean and which keys are set — verified by API test
+  and by reading the response back in a browser session. Gated by a new
+  `MANAGE_INTEGRATIONS` permission, separate from `MANAGE_USERS`/`ADMIN`, so
+  credential access can be granted narrowly (§3). The actual per-provider
+  SDK calls (a real Stripe charge, a real M-Pesa STK push) still need to be
+  written when Phase 2 booking/payments lands — this is the credential
+  storage and admin UI for them, not the payment processing itself. The
+  extension point for that future work is
+  `IntegrationsService.getEnabledForCategory(organizationId, "PAYMENT")`.
+- **Admin Portal — user management**: list org members, invite a new person
+  (role + granular permissions), edit an existing member's
+  role/permissions, revoke access. Invites without an email/SMS integration
+  configured surface a one-time temporary password for the admin to share
+  out of band, rather than being half-built waiting on that integration.
 
 ## Deliberately not built yet (with why)
 
@@ -77,18 +98,26 @@ real browser session against the web app.
 
 Per §11's instruction to ask before locking in irreversible choices:
 
-1. **Payment providers per country.** §2/§4.3 list Stripe plus M-Pesa, Tigo
-   Pesa, Airtel Money, MTN MoMo — but the specific aggregator/PSP per rail
-   (e.g. which mobile-money gateway integrator for Tanzania) determines the
-   `payment_intents`/webhook schema in Phase 2. Needs a decision before
-   Phase 2 payment work starts.
+1. ~~**Payment providers per country.**~~ Resolved by making this
+   admin-configurable rather than a build-time decision: an admin adds
+   whichever provider(s) they've actually contracted with (Stripe, M-Pesa,
+   Tigo Pesa, Airtel Money, MTN MoMo, or manual bank transfer) from the
+   Admin Portal's Integrations tab, with credentials stored server-side and
+   never re-exposed. What's still open for Phase 2 is the
+   `payment_intents`/webhook *schema* — that has to accommodate whatever
+   mix of providers an org actually enables, which is now knowable from the
+   `Integration` table at implementation time rather than needing to be
+   guessed now.
 2. **Native app timeline.** §2 already resolves this in principle — PWA
    first, Capacitor wrap only once PWA engagement is proven — so no action
    needed until that milestone is reached.
-3. **Exact LLM provider/model.** §2 suggests GPT-4o-mini "or equivalent."
-   Needs a firm choice (and API key/billing setup) before any Phase 4 AI
-   feature is built, since §9's governance fields (model/prompt version)
-   are provider-specific.
+3. **Exact LLM provider/model.** §2 suggests GPT-4o-mini "or equivalent." An
+   admin can now store an `LLM_PROVIDER` integration's API key from the
+   Admin Portal (same credential-storage mechanism as payments), so the key
+   itself is no longer a blocker — but §9's governance fields (model/prompt
+   version recorded on every `ai_jobs` row) are provider-specific, so the
+   first Phase 4 AI feature still needs a firm choice of *which* provider's
+   client library and model identifiers to code against.
 4. **Pan-African content scope, raised mid-build.** The brief's own §1.7
    sequences this as "Tanzania first, East Africa next, pan-Africa later,"
    with geographic expansion landing in Phase 5 (§7). Partway through this
@@ -117,3 +146,12 @@ Per §11's instruction to ask before locking in irreversible choices:
 - Scoped permissions, not role-only checks, for anything financial or
   safety-critical (§3) — extend `Permission` in `packages/shared/src/enums.ts`
   rather than adding new role-based `if` checks.
+- `Integration.secrets` is write-only from the API's perspective. No read
+  endpoint, log line, or audit entry should ever include a saved secret
+  value — only whether one is set and which keys exist
+  (`IntegrationsService`'s `toSafeIntegration`/`getEnabledForCategory`
+  split already enforces this; keep it that way when this grows into real
+  provider SDK calls in Phase 2). For production, `secrets` should also
+  move from plain `Json` to encryption-at-rest via a proper secrets
+  manager/KMS — the current column is functionally correct for the admin
+  workflow but is not yet hardened storage.

@@ -62,3 +62,19 @@ This matches the Phase 0/1 gate in the master brief: *"a single sample
 enquiry can be walked through a clickable prototype with no ambiguity"* and
 *"enquiry → priced, approved quote → sent proposal → acceptance, fully
 audited."*
+
+## Admin Portal
+
+Sign in as **admin** and open the "Admin" link in the header:
+
+- **Integrations** — add real credentials for Stripe, M-Pesa, Tigo Pesa,
+  Airtel Money, MTN MoMo, WhatsApp Business, SMS, SMTP, or an LLM provider
+  whenever you're ready to go live with them. The app works fully without
+  any configured — nothing here is required to run the golden path above.
+  Secrets are write-only: once saved, the API never returns their values
+  again, only whether they're set.
+- **Team** — invite people, assign a role, and grant scoped permissions
+  (e.g. `APPROVE_QUOTE`, `MANAGE_INTEGRATIONS`) individually rather than an
+  all-or-nothing Admin flag. A new person gets a one-time temporary
+  password to share with them until an email/SMS integration is configured
+  to deliver invites automatically.

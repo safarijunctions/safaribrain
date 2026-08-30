@@ -13,9 +13,16 @@ export function AppShell() {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-savanna-700 text-white px-6 py-3 flex items-center justify-between">
-        <Link to="/crm" className="font-semibold text-lg tracking-tight">
-          SafariBrain
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link to="/crm" className="font-semibold text-lg tracking-tight">
+            SafariBrain
+          </Link>
+          {user?.role === "ADMIN" && (
+            <Link to="/admin" className="text-sm opacity-90 hover:opacity-100 [&.active]:font-semibold [&.active]:opacity-100">
+              Admin
+            </Link>
+          )}
+        </div>
         <div className="flex items-center gap-4 text-sm">
           <span>
             {user?.fullName} · <span className="opacity-80">{user?.role}</span>

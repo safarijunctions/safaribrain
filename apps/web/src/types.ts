@@ -108,3 +108,24 @@ export interface ItineraryDay {
 export interface TourTemplateDetail extends TourTemplateSummary {
   versions: { id: string; versionNumber: number; termsMarkdown?: string; days: ItineraryDay[] }[];
 }
+
+export interface Integration {
+  id: string;
+  provider: string;
+  category: string;
+  displayName: string;
+  enabled: boolean;
+  config: Record<string, string>;
+  secretsConfigured: boolean;
+  secretKeys: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrgMember {
+  id: string; // membership id
+  role: string;
+  permissions: string[];
+  createdAt: string;
+  user: { id: string; fullName: string; email: string; phone?: string; createdAt: string };
+}

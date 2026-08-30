@@ -22,7 +22,48 @@ export enum Permission {
   PUBLISH_SAFETY_CONTENT = "PUBLISH_SAFETY_CONTENT",
   MODERATE_LISTING = "MODERATE_LISTING",
   MANAGE_USERS = "MANAGE_USERS",
+  // Adding/editing payment, messaging, or AI provider credentials — kept
+  // separate from MANAGE_USERS/ADMIN role so credential access can be
+  // granted narrowly, per §3's dual-control principle.
+  MANAGE_INTEGRATIONS = "MANAGE_INTEGRATIONS",
 }
+
+// Providers an admin can configure from the Admin Portal after launch,
+// rather than the team hardcoding a choice up front — §11 "ask before
+// choosing... payment providers" is resolved by making this admin-editable
+// config instead of a build-time decision.
+export enum IntegrationCategory {
+  PAYMENT = "PAYMENT",
+  MESSAGING = "MESSAGING",
+  AI = "AI",
+  OTHER = "OTHER",
+}
+
+export enum IntegrationProvider {
+  STRIPE = "STRIPE",
+  MPESA = "MPESA",
+  TIGO_PESA = "TIGO_PESA",
+  AIRTEL_MONEY = "AIRTEL_MONEY",
+  MTN_MOMO = "MTN_MOMO",
+  BANK_TRANSFER = "BANK_TRANSFER",
+  WHATSAPP_BUSINESS = "WHATSAPP_BUSINESS",
+  SMS = "SMS",
+  EMAIL_SMTP = "EMAIL_SMTP",
+  LLM_PROVIDER = "LLM_PROVIDER",
+}
+
+export const INTEGRATION_CATEGORY_BY_PROVIDER: Record<IntegrationProvider, IntegrationCategory> = {
+  [IntegrationProvider.STRIPE]: IntegrationCategory.PAYMENT,
+  [IntegrationProvider.MPESA]: IntegrationCategory.PAYMENT,
+  [IntegrationProvider.TIGO_PESA]: IntegrationCategory.PAYMENT,
+  [IntegrationProvider.AIRTEL_MONEY]: IntegrationCategory.PAYMENT,
+  [IntegrationProvider.MTN_MOMO]: IntegrationCategory.PAYMENT,
+  [IntegrationProvider.BANK_TRANSFER]: IntegrationCategory.PAYMENT,
+  [IntegrationProvider.WHATSAPP_BUSINESS]: IntegrationCategory.MESSAGING,
+  [IntegrationProvider.SMS]: IntegrationCategory.MESSAGING,
+  [IntegrationProvider.EMAIL_SMTP]: IntegrationCategory.MESSAGING,
+  [IntegrationProvider.LLM_PROVIDER]: IntegrationCategory.AI,
+};
 
 export enum RequestStage {
   NEW = "NEW",
