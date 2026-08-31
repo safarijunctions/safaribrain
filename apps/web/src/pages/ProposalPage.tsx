@@ -46,10 +46,20 @@ export function ProposalPage() {
   return (
     <div className="min-h-screen bg-savanna-50 py-10 px-4">
       <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-sm border border-stone-200 overflow-hidden">
-        <div className="bg-savanna-700 text-white px-6 py-5">
-          <p className="text-xs uppercase tracking-wide opacity-80">Safari Junction's Adventures</p>
-          <h1 className="text-xl font-semibold">Your safari proposal</h1>
-          <p className="text-sm opacity-90 mt-1">Prepared for {data.contactName}</p>
+        <div className="bg-savanna-700 text-white px-6 py-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-wide opacity-80">Safari Junction's Adventures</p>
+            <h1 className="text-xl font-semibold">Your safari proposal</h1>
+            <p className="text-sm opacity-90 mt-1">Prepared for {data.contactName}</p>
+          </div>
+          <a
+            href={`/api/proposals/${token}/pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0 text-xs font-medium bg-white/10 hover:bg-white/20 rounded px-3 py-1.5 whitespace-nowrap"
+          >
+            Download PDF
+          </a>
         </div>
 
         <div className="p-6 space-y-6">

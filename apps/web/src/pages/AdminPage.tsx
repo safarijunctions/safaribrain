@@ -1,9 +1,19 @@
 import { useState } from "react";
+import { OverviewPanel } from "../components/OverviewPanel";
 import { IntegrationsPanel } from "../components/IntegrationsPanel";
 import { UsersPanel } from "../components/UsersPanel";
 
+const TABS = ["overview", "integrations", "users"] as const;
+type Tab = (typeof TABS)[number];
+
+const TAB_LABELS: Record<Tab, string> = {
+  overview: "Overview",
+  integrations: "Integrations",
+  users: "Team",
+};
+
 export function AdminPage() {
-  const [tab, setTab] = useState<"integrations" | "users">("integrations");
+  const [tab, setTab] = useState<Tab>("overview");
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
@@ -13,7 +23,7 @@ export function AdminPage() {
       </p>
 
       <div className="flex gap-1 mb-6 border-b border-stone-200">
-        {(["integrations", "users"] as const).map((t) => (
+        {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -21,12 +31,14 @@ export function AdminPage() {
               tab === t ? "border-savanna-600 text-savanna-700" : "border-transparent text-stone-500 hover:text-stone-700"
             }`}
           >
-            {t === "integrations" ? "Integrations" : "Team"}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
 
-      {tab === "integrations" ? <IntegrationsPanel /> : <UsersPanel />}
+      {tab === "overview" && <OverviewPanel />}
+      {tab === "integrations" && <IntegrationsPanel />}
+      {tab === "users" && <UsersPanel />}
     </div>
   );
 }

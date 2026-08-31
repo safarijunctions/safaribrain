@@ -122,6 +122,15 @@ export interface Integration {
   updatedAt: string;
 }
 
+export interface DashboardOverview {
+  requestsByStage: Record<string, number>;
+  quotesByStatus: Record<string, number>;
+  acceptedRevenue: { currency: string; total: number }[];
+  teamMembersCount: number;
+  integrationsEnabledCount: number;
+  openTasksCount: number;
+}
+
 export interface OrgMember {
   id: string; // membership id
   role: string;

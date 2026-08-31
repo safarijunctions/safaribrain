@@ -52,7 +52,8 @@ Seeded demo accounts (password `safaribrain-demo` for all):
 3. Sign in as **manager**, approve it, send the proposal.
 4. Open the generated `/proposal/:token` link in an incognito window (or just
    a fresh tab) — no login required. Confirm the internal accommodation net
-   rate line is *not* shown, only the client-safe breakdown is.
+   rate line is *not* shown, only the client-safe breakdown is. Try
+   "Download PDF" too — same content, rendered server-side.
 5. Accept the proposal as the client. Reload the operator's view — the price
    is now frozen (a `PriceSnapshot` row, write-once) and the request has moved
    to `BOOKED`.
@@ -67,6 +68,8 @@ audited."*
 
 Sign in as **admin** and open the "Admin" link in the header:
 
+- **Overview** — requests by stage, quotes by status, accepted revenue,
+  team size, integrations enabled, open tasks. Read-only, ADMIN-role only.
 - **Integrations** — add real credentials for Stripe, M-Pesa, Tigo Pesa,
   Airtel Money, MTN MoMo, WhatsApp Business, SMS, SMTP, or an LLM provider
   whenever you're ready to go live with them. The app works fully without

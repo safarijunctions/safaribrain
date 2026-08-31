@@ -70,6 +70,21 @@ real browser session against the web app.
   role/permissions, revoke access. Invites without an email/SMS integration
   configured surface a one-time temporary password for the admin to share
   out of band, rather than being half-built waiting on that integration.
+- **Admin Portal — overview dashboard** (§4.9 "basic admin/.../dashboard"):
+  requests by stage, quotes by status, accepted revenue (summed from
+  `PriceSnapshot`, grouped by currency since an org can enable more than
+  one), team size, integrations enabled, open tasks. Deliberately just
+  counts/sums with no charting library — a real analytics view with
+  time-series and segmentation is explicitly Phase 4 (§4.9 "analytics").
+- **Branded proposal PDF** (§4.4 "branded PDF export" / §7 Phase 1 "web +
+  PDF"): `GET /proposals/:token/pdf` renders the same client-safe
+  breakdown the public proposal page shows (internal cost lines already
+  stripped upstream in `QuotesService.getProposalByToken`, so the PDF
+  renderer never sees them either) via `pdfkit` — a pure-JS, no-native-deps
+  library chosen over a headless-browser approach specifically because it
+  keeps the rendered file small (~2.5KB for the seeded 4-day itinerary),
+  which matters given §5's low-bandwidth/data-cost principle. Linked from
+  both the public proposal page and the operator's quote card.
 
 ## Deliberately not built yet (with why)
 

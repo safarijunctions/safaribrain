@@ -142,9 +142,19 @@ export function QuoteCard({ quote, onChanged }: { quote: Quote; onChanged: () =>
         )}
 
         {proposalUrl && (
-          <a href={proposalUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline break-all">
-            {proposalUrl}
-          </a>
+          <>
+            <a href={proposalUrl} target="_blank" rel="noreferrer" className="text-xs text-blue-600 underline break-all">
+              {proposalUrl}
+            </a>
+            <a
+              href={`/api/proposals/${quote.proposalLink!.token}/pdf`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-stone-500 underline"
+            >
+              PDF
+            </a>
+          </>
         )}
       </div>
     </div>
