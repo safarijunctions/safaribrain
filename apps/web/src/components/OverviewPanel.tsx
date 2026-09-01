@@ -45,14 +45,14 @@ export function OverviewPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatTile label="Accepted revenue" value={revenueLabel} sub="sum of frozen price snapshots" />
         <StatTile label="Open tasks" value={data.openTasksCount} />
         <StatTile label="Team members" value={data.teamMembersCount} />
         <StatTile label="Integrations enabled" value={data.integrationsEnabledCount} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <BreakdownTile title="Requests by stage" counts={data.requestsByStage} />
         <BreakdownTile title="Quotes by status" counts={data.quotesByStatus} />
       </div>

@@ -164,7 +164,7 @@ function IntegrationForm({ onSaved, existingProviders }: { onSaved: () => void; 
 
   return (
     <div className="border border-stone-200 rounded-xl p-4 bg-clay-50/40 space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium mb-1">Provider</label>
           <select className="w-full border border-stone-300 rounded px-2 py-1.5 text-sm" value={provider} onChange={(e) => setProvider(e.target.value)}>

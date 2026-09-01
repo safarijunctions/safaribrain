@@ -117,7 +117,7 @@ function InviteForm({ onInvited }: { onInvited: (res: { user: { email: string };
   });
 
   return (
-    <div className="border border-stone-200 rounded-xl p-4 bg-clay-50/40 grid grid-cols-3 gap-3">
+    <div className="border border-stone-200 rounded-xl p-4 bg-clay-50/40 grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div>
         <label className="block text-xs font-medium mb-1">Full name</label>
         <input className="w-full border border-stone-300 rounded px-2 py-1.5 text-sm" value={fullName} onChange={(e) => setFullName(e.target.value)} />
@@ -136,7 +136,7 @@ function InviteForm({ onInvited }: { onInvited: (res: { user: { email: string };
           ))}
         </select>
       </div>
-      <div className="col-span-3">
+      <div className="sm:col-span-3">
         {invite.isError && <p className="text-xs text-red-600 mb-2">{(invite.error as Error).message}</p>}
         <button
           onClick={() => invite.mutate()}

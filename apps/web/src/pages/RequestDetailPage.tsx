@@ -39,14 +39,14 @@ export function RequestDetailPage() {
   const canDraftNewQuote = !latestQuote || ["ACCEPTED", "DECLINED", "EXPIRED"].includes(latestQuote.status);
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 grid grid-cols-3 gap-6">
-      <div className="col-span-2 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-6">
         <section className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm shadow-clay-900/5">
           <h1 className="font-display text-lg font-semibold text-clay-800">{request.contact.fullName}</h1>
           <p className="text-sm text-stone-500">
             {request.contact.email} {request.contact.whatsapp && `· WhatsApp ${request.contact.whatsapp}`}
           </p>
-          <div className="grid grid-cols-3 gap-4 mt-4 text-sm">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-4 text-sm">
             <div>
               <p className="text-stone-400 text-xs">Party size</p>
               <p>{request.partySize}</p>
@@ -121,9 +121,9 @@ export function RequestDetailPage() {
           <h2 className="font-display font-semibold text-clay-800 mb-3">Tasks</h2>
           <ul className="space-y-2 text-sm">
             {request.tasks.map((t) => (
-              <li key={t.id} className="flex items-center justify-between">
+              <li key={t.id} className="flex items-center justify-between gap-2 flex-wrap">
                 <span className={t.completedAt ? "line-through text-stone-400" : ""}>{t.title}</span>
-                {t.dueAt && <span className="text-xs text-stone-400">{new Date(t.dueAt).toLocaleDateString()}</span>}
+                {t.dueAt && <span className="text-xs text-stone-400 shrink-0">{new Date(t.dueAt).toLocaleDateString()}</span>}
               </li>
             ))}
           </ul>

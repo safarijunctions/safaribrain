@@ -124,6 +124,23 @@ internal tool bolted to a polished client page. A small hand-drawn
 `AcaciaSilhouette` component (two SVG shapes, no image asset) is the one
 decorative touch, used sparingly on the login and proposal pages.
 
+**Mobile layout is a real requirement here, not polish** — §5 states this
+explicitly ("design for weak connections and feature phones from day one").
+A first pass at the theme left every multi-column screen (request detail,
+quote builder, admin forms) broken at phone width: fixed `grid-cols-3`/
+`grid-cols-4`/`grid-cols-12` layouts don't collapse, so labels and inputs
+overlapped into unusable slivers, confirmed with real 390px-viewport
+screenshots rather than just a browser resize. Every such grid now carries
+a mobile-first breakpoint (`grid-cols-1 sm:grid-cols-3`, etc.). The subtler
+bug this surfaced: a `col-span-N` child left unprefixed inside a container
+whose *own* column count is now responsive still forces `N` columns to
+exist at any width — CSS grid then invents implicit columns to satisfy it,
+which re-breaks the "1 column on mobile" layout even though the container
+class looks correct. Every `col-span` in a responsive grid needs the same
+breakpoint prefix as its container. Re-verified on both the request-detail
+page and the two admin forms that had this exact bug (`UsersPanel`'s invite
+form, `CrmInboxPage`'s new-enquiry form) before calling it fixed.
+
 ## Deliberately not built yet (with why)
 
 - **WhatsApp Business API channel** (§4.1/§5/Phase 1 scope item) — needs a

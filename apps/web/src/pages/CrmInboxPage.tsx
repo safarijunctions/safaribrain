@@ -21,15 +21,15 @@ export function CrmInboxPage() {
   const [showForm, setShowForm] = useState(false);
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="font-display text-2xl font-semibold text-clay-800">Enquiry inbox</h1>
           <p className="text-sm text-stone-500">One deduplicated contact and request per enquiry, from any channel.</p>
         </div>
         <button
           onClick={() => setShowForm((s) => !s)}
-          className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition"
+          className="self-start sm:self-auto bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition"
         >
           {showForm ? "Close" : "+ New enquiry"}
         </button>
@@ -89,7 +89,7 @@ function NewEnquiryForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="bg-white border border-stone-200 rounded-xl p-5 mb-6 grid grid-cols-2 gap-4 shadow-sm shadow-clay-900/5">
+    <form onSubmit={submit} className="bg-white border border-stone-200 rounded-xl p-5 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 shadow-sm shadow-clay-900/5">
       <div>
         <label className="block text-xs font-medium mb-1">Full name</label>
         <input
@@ -141,7 +141,7 @@ function NewEnquiryForm({ onCreated }: { onCreated: () => void }) {
           ))}
         </select>
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className="block text-xs font-medium mb-1">Notes</label>
         <textarea
           className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
@@ -150,7 +150,7 @@ function NewEnquiryForm({ onCreated }: { onCreated: () => void }) {
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
         />
       </div>
-      <div className="col-span-2 flex justify-end">
+      <div className="sm:col-span-2 flex justify-end">
         <button
           type="submit"
           disabled={create.isPending}

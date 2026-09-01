@@ -12,26 +12,27 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="relative bg-gradient-to-r from-clay-800 via-clay-700 to-acacia-800 text-white px-6 py-3.5 flex items-center justify-between shadow-sm">
+      <header className="relative bg-gradient-to-r from-clay-800 via-clay-700 to-acacia-800 text-white px-4 sm:px-6 py-3.5 flex items-center justify-between shadow-sm gap-2">
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-sunset-400 via-sunset-300 to-acacia-400" />
-        <div className="flex items-center gap-6">
-          <Link to="/crm" className="font-display font-semibold text-lg tracking-tight">
+        <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+          <Link to="/crm" className="font-display font-semibold text-lg tracking-tight shrink-0">
             SafariBrain
           </Link>
           {user?.role === "ADMIN" && (
             <Link
               to="/admin"
-              className="text-sm text-white/80 hover:text-white transition [&.active]:text-white [&.active]:font-semibold"
+              className="text-sm text-white/80 hover:text-white transition [&.active]:text-white [&.active]:font-semibold shrink-0"
             >
               Admin
             </Link>
           )}
         </div>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="text-white/90">
-            {user?.fullName} <span className="text-white/50">·</span> <span className="text-sunset-200">{user?.role}</span>
+        <div className="flex items-center gap-2 sm:gap-4 text-sm shrink-0">
+          <span className="hidden sm:inline text-white/90 truncate max-w-[14rem]">
+            {user?.fullName} <span className="text-white/50">·</span>{" "}
           </span>
-          <button onClick={handleLogout} className="text-white/80 hover:text-white underline decoration-white/40 transition">
+          <span className="text-sunset-200 text-xs sm:text-sm">{user?.role}</span>
+          <button onClick={handleLogout} className="text-white/80 hover:text-white underline decoration-white/40 transition shrink-0">
             Sign out
           </button>
         </div>

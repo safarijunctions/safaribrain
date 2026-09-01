@@ -16,7 +16,7 @@ export function AdminPage() {
   const [tab, setTab] = useState<Tab>("overview");
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
       <h1 className="font-display text-2xl font-semibold text-clay-800 mb-1">Admin Portal</h1>
       <p className="text-sm text-stone-500 mb-6">
         Provider credentials and team access — add real payment, messaging, and AI keys here once you're ready to go live.

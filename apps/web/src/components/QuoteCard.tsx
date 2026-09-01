@@ -231,32 +231,32 @@ function ReviseForm({
 
       <div className="space-y-2">
         {extraCostLines.map((line, idx) => (
-          <div key={idx} className="grid grid-cols-12 gap-2 items-center text-xs">
+          <div key={idx} className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-center text-xs border border-orange-100 sm:border-0 rounded-lg sm:rounded-none p-2 sm:p-0 bg-white sm:bg-transparent">
             <input
-              className="col-span-5 border border-stone-300 rounded px-2 py-1"
+              className="col-span-2 sm:col-span-5 border border-stone-300 rounded px-2 py-1"
               value={line.label}
               onChange={(e) => updateLine(idx, { label: e.target.value })}
             />
             <input
               type="number"
-              className="col-span-2 border border-stone-300 rounded px-2 py-1"
+              className="col-span-1 sm:col-span-2 border border-stone-300 rounded px-2 py-1"
               value={line.quantity}
               onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })}
               placeholder="Qty"
             />
             <input
               type="number"
-              className="col-span-2 border border-stone-300 rounded px-2 py-1"
+              className="col-span-1 sm:col-span-2 border border-stone-300 rounded px-2 py-1"
               value={line.unitCost}
               onChange={(e) => updateLine(idx, { unitCost: Number(e.target.value) })}
               placeholder="Unit cost"
             />
-            <label className="col-span-2 flex items-center gap-1" title="Internal cost — never shown to the client">
+            <label className="col-span-1 sm:col-span-2 flex items-center gap-1" title="Internal cost — never shown to the client">
               <input type="checkbox" checked={line.internal} onChange={(e) => updateLine(idx, { internal: e.target.checked })} />
               internal
             </label>
-            <button className="col-span-1 text-red-500" onClick={() => setExtraCostLines((lines) => lines.filter((_, i) => i !== idx))}>
-              ✕
+            <button className="col-span-1 text-red-500 text-left sm:text-center" onClick={() => setExtraCostLines((lines) => lines.filter((_, i) => i !== idx))}>
+              ✕ remove
             </button>
           </div>
         ))}
@@ -268,7 +268,7 @@ function ReviseForm({
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div>
           <label className="block font-medium mb-1">Markup %</label>
           <input type="number" className="w-full border border-stone-300 rounded px-2 py-1" value={markupPercent} onChange={(e) => setMarkupPercent(Number(e.target.value))} />
