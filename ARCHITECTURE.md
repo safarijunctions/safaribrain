@@ -29,11 +29,33 @@ real browser session against the web app.
 - Products: tour templates → versioned itinerary days.
 - Pricing engine: combines auto-pulled park fees with operator-entered
   supplier cost lines, applies markup/discount/tax/commission, and marks
-  which lines are internal-only.
+  which lines are internal-only. `PriceBreakdownDto.commissionPercent` is
+  now persisted alongside `commissionAmount` (it wasn't originally — only
+  the computed amount was kept, silently dropping the actual business
+  input), so a revised quote's form can be pre-filled exactly rather than
+  reverse-engineered from a rounded amount.
+- Proposal engagement tracking (§4.4 "engagement tracking"):
+  `ProposalLink.openedAt` was already recorded server-side on first view but
+  never surfaced anywhere — `QuoteCard` now shows "Client opened it [time]"
+  next to the quote status.
 - Quotes: `DRAFT → PENDING_APPROVAL → APPROVED → SENT → ACCEPTED` state
   machine, with `CHANGES_REQUESTED`/`DECLINED` branches. Approval requires
   the `APPROVE_QUOTE` permission — an operator cannot approve their own
   quote (§3 dual control), enforced server-side, not just hidden in the UI.
+  The `CHANGES_REQUESTED` branch is a real, closed loop, not just a status
+  value: when a client requests changes on the public proposal page, the
+  operator gets a "Revise & resubmit" form in `QuoteCard` pre-filled from
+  the rejected version's supplier cost lines and pricing knobs (park-fee
+  lines are left out since those recompute automatically from the quote's
+  pinned template version), which calls the existing `POST
+  /quotes/:id/revise` endpoint, drops the quote back to `DRAFT`, and reuses
+  the same `ProposalLink` token on resend — the client's original link
+  stays valid rather than needing a new one. Closes what was a real gap:
+  the negotiation half of the CRM lifecycle (§4.7 "new → quoted →
+  negotiating → booked") had an API for this but no UI action for it.
+  Verified end-to-end in a browser: client requests changes → operator
+  revises the markup → resubmits → manager re-approves → resends → client
+  accepts the revised price, which freezes correctly into the snapshot.
 - **Immutable price snapshot (§1.8, §6):** `PriceSnapshot` rows are written
   once, at acceptance, from the quote's current version, and the application
   layer never updates or deletes them. `QuotesService.getProposalByToken`

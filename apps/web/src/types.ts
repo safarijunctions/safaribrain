@@ -48,6 +48,7 @@ export interface PriceBreakdownDto {
   discountAmount: number;
   taxPercent: number;
   taxAmount: number;
+  commissionPercent: number;
   commissionAmount: number;
   totalClientPrice: number;
   feeSourcesAsOf: { parkFeeRuleId: string; label: string; asOfDate: string }[];
