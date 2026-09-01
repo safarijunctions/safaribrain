@@ -41,8 +41,8 @@ export function RequestDetailPage() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 grid grid-cols-3 gap-6">
       <div className="col-span-2 space-y-6">
-        <section className="bg-white border border-stone-200 rounded-lg p-5">
-          <h1 className="text-lg font-semibold">{request.contact.fullName}</h1>
+        <section className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm shadow-clay-900/5">
+          <h1 className="font-display text-lg font-semibold text-clay-800">{request.contact.fullName}</h1>
           <p className="text-sm text-stone-500">
             {request.contact.email} {request.contact.whatsapp && `· WhatsApp ${request.contact.whatsapp}`}
           </p>
@@ -63,8 +63,8 @@ export function RequestDetailPage() {
           {request.notes && <p className="text-sm mt-4 text-stone-700 italic">"{request.notes}"</p>}
         </section>
 
-        <section className="bg-white border border-stone-200 rounded-lg p-5">
-          <h2 className="font-medium mb-3">Quotes</h2>
+        <section className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm shadow-clay-900/5">
+          <h2 className="font-display font-semibold text-clay-800 mb-3">Quotes</h2>
           {request.quotes.length === 0 && <p className="text-sm text-stone-400">No quote drafted yet.</p>}
           <div className="space-y-4">
             {request.quotes.map((q) => (
@@ -77,7 +77,7 @@ export function RequestDetailPage() {
               {!showBuilder ? (
                 <button
                   onClick={() => setShowBuilder(true)}
-                  className="text-sm font-medium text-savanna-700 hover:underline"
+                  className="text-sm font-medium text-clay-700 hover:underline"
                 >
                   + Build a new quote
                 </button>
@@ -117,8 +117,8 @@ export function RequestDetailPage() {
       </div>
 
       <div className="space-y-6">
-        <section className="bg-white border border-stone-200 rounded-lg p-5">
-          <h2 className="font-medium mb-3">Tasks</h2>
+        <section className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm shadow-clay-900/5">
+          <h2 className="font-display font-semibold text-clay-800 mb-3">Tasks</h2>
           <ul className="space-y-2 text-sm">
             {request.tasks.map((t) => (
               <li key={t.id} className="flex items-center justify-between">
@@ -129,12 +129,12 @@ export function RequestDetailPage() {
           </ul>
         </section>
 
-        <section className="bg-white border border-stone-200 rounded-lg p-5">
-          <h2 className="font-medium mb-3">Activity</h2>
+        <section className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm shadow-clay-900/5">
+          <h2 className="font-display font-semibold text-clay-800 mb-3">Activity</h2>
           <ul className="space-y-3 text-sm">
             {request.pipelineLog.map((p) => (
               <li key={p.id}>
-                <p className="font-medium text-xs uppercase tracking-wide text-savanna-700">{p.stage}</p>
+                <p className="font-medium text-xs uppercase tracking-wide text-clay-700">{p.stage}</p>
                 <p className="text-stone-600">{p.note}</p>
                 <p className="text-xs text-stone-400">{new Date(p.createdAt).toLocaleString()}</p>
               </li>

@@ -108,6 +108,22 @@ real browser session against the web app.
   which matters given §5's low-bandwidth/data-cost principle. Linked from
   both the public proposal page and the operator's quote card.
 
+## Visual design
+
+The app now has an actual brand identity instead of default Tailwind gray/
+blue: an "African savanna" theme — `clay` (terracotta, primary), `acacia`
+(deep green, secondary/success), `sunset` (amber, accents) — defined in
+`apps/web/tailwind.config.js`, with Fraunces for headings and Inter for
+body text (Google Fonts, loaded in `apps/web/index.html` with a system-font
+fallback stack so nothing breaks if the fonts don't load). Applied
+consistently across every screen, not just the client-facing ones — the
+same tokens drive the internal CRM/admin UI, the public proposal page, and
+the proposal PDF (`ProposalPdfService`'s colors are hand-matched to the
+same hex values), so the whole product reads as one brand rather than an
+internal tool bolted to a polished client page. A small hand-drawn
+`AcaciaSilhouette` component (two SVG shapes, no image asset) is the one
+decorative touch, used sparingly on the login and proposal pages.
+
 ## Deliberately not built yet (with why)
 
 - **WhatsApp Business API channel** (§4.1/§5/Phase 1 scope item) — needs a

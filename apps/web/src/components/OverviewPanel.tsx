@@ -4,9 +4,9 @@ import { DashboardOverview } from "../types";
 
 function StatTile({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
-    <div className="bg-white border border-stone-200 rounded-lg p-4">
+    <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm shadow-clay-900/5">
       <p className="text-xs text-stone-500">{label}</p>
-      <p className="text-2xl font-semibold text-stone-900 mt-1">{value}</p>
+      <p className="font-display text-2xl font-semibold text-clay-800 mt-1">{value}</p>
       {sub && <p className="text-xs text-stone-400 mt-1">{sub}</p>}
     </div>
   );
@@ -16,7 +16,7 @@ function BreakdownTile({ title, counts }: { title: string; counts: Record<string
   const entries = Object.entries(counts);
   const total = entries.reduce((sum, [, n]) => sum + n, 0);
   return (
-    <div className="bg-white border border-stone-200 rounded-lg p-4">
+    <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm shadow-clay-900/5">
       <p className="text-xs text-stone-500 mb-2">{title}</p>
       {entries.length === 0 && <p className="text-sm text-stone-400">None yet</p>}
       <div className="space-y-1.5">

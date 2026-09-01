@@ -55,7 +55,7 @@ export function QuoteBuilder({
   }
 
   return (
-    <div className="border border-stone-200 rounded-lg p-4 bg-stone-50 space-y-4">
+    <div className="border border-stone-200 rounded-xl p-4 bg-clay-50/40 space-y-4">
       <div>
         <h3 className="text-sm font-medium mb-1">{template.title}</h3>
         <ol className="text-xs text-stone-500 list-decimal list-inside">
@@ -151,7 +151,7 @@ export function QuoteBuilder({
           ))}
         </div>
         <button
-          className="mt-2 text-xs text-savanna-700 hover:underline"
+          className="mt-2 text-xs text-clay-700 hover:underline"
           onClick={() =>
             setCostLines((lines) => [...lines, { label: "", category: "OTHER", quantity: 1, unitCost: 0, currency, internal: false }])
           }
@@ -165,7 +165,7 @@ export function QuoteBuilder({
       <button
         onClick={() => create.mutate()}
         disabled={create.isPending}
-        className="bg-savanna-600 hover:bg-savanna-700 text-white text-sm font-medium rounded px-4 py-2 disabled:opacity-50"
+        className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition disabled:opacity-50"
       >
         {create.isPending ? "Pricing…" : "Create quote draft"}
       </button>

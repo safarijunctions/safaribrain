@@ -6,10 +6,10 @@ import { Quote } from "../types";
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-stone-100 text-stone-700",
-  PENDING_APPROVAL: "bg-amber-100 text-amber-800",
+  PENDING_APPROVAL: "bg-sunset-100 text-sunset-700",
   APPROVED: "bg-blue-100 text-blue-800",
   SENT: "bg-purple-100 text-purple-800",
-  ACCEPTED: "bg-green-100 text-green-800",
+  ACCEPTED: "bg-acacia-100 text-acacia-800",
   CHANGES_REQUESTED: "bg-orange-100 text-orange-800",
   EXPIRED: "bg-stone-200 text-stone-600",
   DECLINED: "bg-red-100 text-red-700",
@@ -45,10 +45,10 @@ export function QuoteCard({ quote, onChanged }: { quote: Quote; onChanged: () =>
   const proposalUrl = quote.proposalLink ? `${window.location.origin}/proposal/${quote.proposalLink.token}` : null;
 
   return (
-    <div className="border border-stone-200 rounded-lg p-4">
+    <div className="border border-stone-200 rounded-xl p-4 shadow-sm shadow-clay-900/5">
       <div className="flex items-center justify-between mb-2">
         <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[quote.status]}`}>{quote.status}</span>
-        <p className="text-lg font-semibold">
+        <p className="font-display text-lg font-semibold text-clay-800">
           {quote.currency} {Number(latest.totalPrice).toLocaleString()}
         </p>
       </div>
@@ -56,10 +56,10 @@ export function QuoteCard({ quote, onChanged }: { quote: Quote; onChanged: () =>
       <div className="text-xs text-stone-500 mb-3">
         Version {latest.versionNo} · created {new Date(latest.createdAt).toLocaleString()}
         {quote.proposalLink?.openedAt && (
-          <span className="ml-2 text-blue-700">Client opened it {new Date(quote.proposalLink.openedAt).toLocaleString()}</span>
+          <span className="ml-2 text-sunset-700">Client opened it {new Date(quote.proposalLink.openedAt).toLocaleString()}</span>
         )}
         {quote.priceSnapshot && (
-          <span className="ml-2 text-green-700 font-medium">Frozen at acceptance {new Date(quote.priceSnapshot.frozenAt).toLocaleString()}</span>
+          <span className="ml-2 text-acacia-700 font-medium">Frozen at acceptance {new Date(quote.priceSnapshot.frozenAt).toLocaleString()}</span>
         )}
       </div>
 
@@ -110,7 +110,7 @@ export function QuoteCard({ quote, onChanged }: { quote: Quote; onChanged: () =>
         {quote.status === "DRAFT" && (
           <button
             onClick={() => submitForApproval.mutate()}
-            className="text-xs font-medium bg-savanna-600 hover:bg-savanna-700 text-white rounded px-3 py-1.5"
+            className="text-xs font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5"
           >
             Submit for approval
           </button>
@@ -126,7 +126,7 @@ export function QuoteCard({ quote, onChanged }: { quote: Quote; onChanged: () =>
             />
             {hasPermission("APPROVE_QUOTE") ? (
               <>
-                <button onClick={() => decide.mutate("APPROVED")} className="text-xs font-medium bg-green-600 hover:bg-green-700 text-white rounded px-3 py-1.5">
+                <button onClick={() => decide.mutate("APPROVED")} className="text-xs font-medium bg-acacia-600 hover:bg-acacia-700 text-white rounded px-3 py-1.5">
                   Approve
                 </button>
                 <button onClick={() => decide.mutate("REJECTED")} className="text-xs font-medium bg-red-500 hover:bg-red-600 text-white rounded px-3 py-1.5">
@@ -140,7 +140,7 @@ export function QuoteCard({ quote, onChanged }: { quote: Quote; onChanged: () =>
         )}
 
         {quote.status === "APPROVED" && (
-          <button onClick={() => send.mutate()} className="text-xs font-medium bg-savanna-600 hover:bg-savanna-700 text-white rounded px-3 py-1.5">
+          <button onClick={() => send.mutate()} className="text-xs font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5">
             Send proposal to client
           </button>
         )}
@@ -226,7 +226,7 @@ function ReviseForm({
   }
 
   return (
-    <div className="mt-4 border-t border-orange-200 pt-4 space-y-3 bg-orange-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-lg">
+    <div className="mt-4 border-t border-orange-200 pt-4 space-y-3 bg-orange-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-xl">
       <p className="text-xs font-medium text-orange-800">Revise this quote — park fees stay auto-calculated, edit the rest:</p>
 
       <div className="space-y-2">
@@ -261,7 +261,7 @@ function ReviseForm({
           </div>
         ))}
         <button
-          className="text-xs text-savanna-700 hover:underline"
+          className="text-xs text-clay-700 hover:underline"
           onClick={() => setExtraCostLines((lines) => [...lines, { label: "", category: "OTHER", quantity: 1, unitCost: 0, currency, internal: false }])}
         >
           + Add cost line
@@ -293,7 +293,7 @@ function ReviseForm({
         <button
           onClick={() => revise.mutate()}
           disabled={revise.isPending}
-          className="text-xs font-medium bg-savanna-600 hover:bg-savanna-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+          className="text-xs font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
         >
           {revise.isPending ? "Saving…" : "Save revision (back to draft)"}
         </button>

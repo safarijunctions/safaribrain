@@ -61,7 +61,7 @@ export function IntegrationsPanel() {
         </p>
         <button
           onClick={() => setShowForm((s) => !s)}
-          className="bg-savanna-600 hover:bg-savanna-700 text-white text-sm font-medium rounded px-4 py-2"
+          className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition"
         >
           {showForm ? "Close" : "+ Add provider"}
         </button>
@@ -79,7 +79,7 @@ export function IntegrationsPanel() {
 
       {isLoading && <p className="text-sm text-stone-500">Loading…</p>}
 
-      <div className="bg-white border border-stone-200 rounded-lg divide-y">
+      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-clay-900/5 overflow-hidden">
         {data?.map((i) => (
           <div key={i.id} className="flex items-center justify-between px-5 py-4">
             <div>
@@ -155,7 +155,7 @@ function IntegrationForm({ onSaved, existingProviders }: { onSaved: () => void; 
             </button>
           </div>
         ))}
-        <button className="text-xs text-savanna-700 hover:underline" onClick={() => setFields([...fields, { key: "", value: "" }])}>
+        <button className="text-xs text-clay-700 hover:underline" onClick={() => setFields([...fields, { key: "", value: "" }])}>
           + Add field
         </button>
       </div>
@@ -163,7 +163,7 @@ function IntegrationForm({ onSaved, existingProviders }: { onSaved: () => void; 
   }
 
   return (
-    <div className="border border-stone-200 rounded-lg p-4 bg-stone-50 space-y-4">
+    <div className="border border-stone-200 rounded-xl p-4 bg-clay-50/40 space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium mb-1">Provider</label>
@@ -206,7 +206,7 @@ function IntegrationForm({ onSaved, existingProviders }: { onSaved: () => void; 
       <button
         onClick={() => save.mutate()}
         disabled={save.isPending}
-        className="bg-savanna-600 hover:bg-savanna-700 text-white text-sm font-medium rounded px-4 py-2 disabled:opacity-50"
+        className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition disabled:opacity-50"
       >
         {save.isPending ? "Saving…" : "Save provider"}
       </button>
