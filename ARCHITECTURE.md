@@ -29,11 +29,33 @@ real browser session against the web app.
 - Products: tour templates → versioned itinerary days.
 - Pricing engine: combines auto-pulled park fees with operator-entered
   supplier cost lines, applies markup/discount/tax/commission, and marks
-  which lines are internal-only.
+  which lines are internal-only. `PriceBreakdownDto.commissionPercent` is
+  now persisted alongside `commissionAmount` (it wasn't originally — only
+  the computed amount was kept, silently dropping the actual business
+  input), so a revised quote's form can be pre-filled exactly rather than
+  reverse-engineered from a rounded amount.
+- Proposal engagement tracking (§4.4 "engagement tracking"):
+  `ProposalLink.openedAt` was already recorded server-side on first view but
+  never surfaced anywhere — `QuoteCard` now shows "Client opened it [time]"
+  next to the quote status.
 - Quotes: `DRAFT → PENDING_APPROVAL → APPROVED → SENT → ACCEPTED` state
   machine, with `CHANGES_REQUESTED`/`DECLINED` branches. Approval requires
   the `APPROVE_QUOTE` permission — an operator cannot approve their own
   quote (§3 dual control), enforced server-side, not just hidden in the UI.
+  The `CHANGES_REQUESTED` branch is a real, closed loop, not just a status
+  value: when a client requests changes on the public proposal page, the
+  operator gets a "Revise & resubmit" form in `QuoteCard` pre-filled from
+  the rejected version's supplier cost lines and pricing knobs (park-fee
+  lines are left out since those recompute automatically from the quote's
+  pinned template version), which calls the existing `POST
+  /quotes/:id/revise` endpoint, drops the quote back to `DRAFT`, and reuses
+  the same `ProposalLink` token on resend — the client's original link
+  stays valid rather than needing a new one. Closes what was a real gap:
+  the negotiation half of the CRM lifecycle (§4.7 "new → quoted →
+  negotiating → booked") had an API for this but no UI action for it.
+  Verified end-to-end in a browser: client requests changes → operator
+  revises the markup → resubmits → manager re-approves → resends → client
+  accepts the revised price, which freezes correctly into the snapshot.
 - **Immutable price snapshot (§1.8, §6):** `PriceSnapshot` rows are written
   once, at acceptance, from the quote's current version, and the application
   layer never updates or deletes them. `QuotesService.getProposalByToken`
@@ -49,6 +71,75 @@ real browser session against the web app.
 - Web app: CRM inbox, request detail with an inline quote builder, and the
   public proposal/accept page — React + Vite + Tailwind + TanStack
   Router/Query, per §2.
+- **Admin Portal — Integrations and Team** (§4.9, resolves the payment/AI
+  provider decision below): an `Integration` model
+  (`organizationId`, `provider`, `category`, `config`, `secrets`, `enabled`)
+  lets an admin add Stripe/M-Pesa/Tigo Pesa/Airtel Money/MTN
+  MoMo/WhatsApp/SMS/SMTP/LLM credentials from the running app instead of the
+  team hardcoding a provider at build time. `secrets` is write-only —
+  `IntegrationsService` never returns saved secret values, only a
+  `secretsConfigured` boolean and which keys are set — verified by API test
+  and by reading the response back in a browser session. Gated by a new
+  `MANAGE_INTEGRATIONS` permission, separate from `MANAGE_USERS`/`ADMIN`, so
+  credential access can be granted narrowly (§3). The actual per-provider
+  SDK calls (a real Stripe charge, a real M-Pesa STK push) still need to be
+  written when Phase 2 booking/payments lands — this is the credential
+  storage and admin UI for them, not the payment processing itself. The
+  extension point for that future work is
+  `IntegrationsService.getEnabledForCategory(organizationId, "PAYMENT")`.
+- **Admin Portal — user management**: list org members, invite a new person
+  (role + granular permissions), edit an existing member's
+  role/permissions, revoke access. Invites without an email/SMS integration
+  configured surface a one-time temporary password for the admin to share
+  out of band, rather than being half-built waiting on that integration.
+- **Admin Portal — overview dashboard** (§4.9 "basic admin/.../dashboard"):
+  requests by stage, quotes by status, accepted revenue (summed from
+  `PriceSnapshot`, grouped by currency since an org can enable more than
+  one), team size, integrations enabled, open tasks. Deliberately just
+  counts/sums with no charting library — a real analytics view with
+  time-series and segmentation is explicitly Phase 4 (§4.9 "analytics").
+- **Branded proposal PDF** (§4.4 "branded PDF export" / §7 Phase 1 "web +
+  PDF"): `GET /proposals/:token/pdf` renders the same client-safe
+  breakdown the public proposal page shows (internal cost lines already
+  stripped upstream in `QuotesService.getProposalByToken`, so the PDF
+  renderer never sees them either) via `pdfkit` — a pure-JS, no-native-deps
+  library chosen over a headless-browser approach specifically because it
+  keeps the rendered file small (~2.5KB for the seeded 4-day itinerary),
+  which matters given §5's low-bandwidth/data-cost principle. Linked from
+  both the public proposal page and the operator's quote card.
+
+## Visual design
+
+The app now has an actual brand identity instead of default Tailwind gray/
+blue: an "African savanna" theme — `clay` (terracotta, primary), `acacia`
+(deep green, secondary/success), `sunset` (amber, accents) — defined in
+`apps/web/tailwind.config.js`, with Fraunces for headings and Inter for
+body text (Google Fonts, loaded in `apps/web/index.html` with a system-font
+fallback stack so nothing breaks if the fonts don't load). Applied
+consistently across every screen, not just the client-facing ones — the
+same tokens drive the internal CRM/admin UI, the public proposal page, and
+the proposal PDF (`ProposalPdfService`'s colors are hand-matched to the
+same hex values), so the whole product reads as one brand rather than an
+internal tool bolted to a polished client page. A small hand-drawn
+`AcaciaSilhouette` component (two SVG shapes, no image asset) is the one
+decorative touch, used sparingly on the login and proposal pages.
+
+**Mobile layout is a real requirement here, not polish** — §5 states this
+explicitly ("design for weak connections and feature phones from day one").
+A first pass at the theme left every multi-column screen (request detail,
+quote builder, admin forms) broken at phone width: fixed `grid-cols-3`/
+`grid-cols-4`/`grid-cols-12` layouts don't collapse, so labels and inputs
+overlapped into unusable slivers, confirmed with real 390px-viewport
+screenshots rather than just a browser resize. Every such grid now carries
+a mobile-first breakpoint (`grid-cols-1 sm:grid-cols-3`, etc.). The subtler
+bug this surfaced: a `col-span-N` child left unprefixed inside a container
+whose *own* column count is now responsive still forces `N` columns to
+exist at any width — CSS grid then invents implicit columns to satisfy it,
+which re-breaks the "1 column on mobile" layout even though the container
+class looks correct. Every `col-span` in a responsive grid needs the same
+breakpoint prefix as its container. Re-verified on both the request-detail
+page and the two admin forms that had this exact bug (`UsersPanel`'s invite
+form, `CrmInboxPage`'s new-enquiry form) before calling it fixed.
 
 ## Deliberately not built yet (with why)
 
@@ -77,18 +168,26 @@ real browser session against the web app.
 
 Per §11's instruction to ask before locking in irreversible choices:
 
-1. **Payment providers per country.** §2/§4.3 list Stripe plus M-Pesa, Tigo
-   Pesa, Airtel Money, MTN MoMo — but the specific aggregator/PSP per rail
-   (e.g. which mobile-money gateway integrator for Tanzania) determines the
-   `payment_intents`/webhook schema in Phase 2. Needs a decision before
-   Phase 2 payment work starts.
+1. ~~**Payment providers per country.**~~ Resolved by making this
+   admin-configurable rather than a build-time decision: an admin adds
+   whichever provider(s) they've actually contracted with (Stripe, M-Pesa,
+   Tigo Pesa, Airtel Money, MTN MoMo, or manual bank transfer) from the
+   Admin Portal's Integrations tab, with credentials stored server-side and
+   never re-exposed. What's still open for Phase 2 is the
+   `payment_intents`/webhook *schema* — that has to accommodate whatever
+   mix of providers an org actually enables, which is now knowable from the
+   `Integration` table at implementation time rather than needing to be
+   guessed now.
 2. **Native app timeline.** §2 already resolves this in principle — PWA
    first, Capacitor wrap only once PWA engagement is proven — so no action
    needed until that milestone is reached.
-3. **Exact LLM provider/model.** §2 suggests GPT-4o-mini "or equivalent."
-   Needs a firm choice (and API key/billing setup) before any Phase 4 AI
-   feature is built, since §9's governance fields (model/prompt version)
-   are provider-specific.
+3. **Exact LLM provider/model.** §2 suggests GPT-4o-mini "or equivalent." An
+   admin can now store an `LLM_PROVIDER` integration's API key from the
+   Admin Portal (same credential-storage mechanism as payments), so the key
+   itself is no longer a blocker — but §9's governance fields (model/prompt
+   version recorded on every `ai_jobs` row) are provider-specific, so the
+   first Phase 4 AI feature still needs a firm choice of *which* provider's
+   client library and model identifiers to code against.
 4. **Pan-African content scope, raised mid-build.** The brief's own §1.7
    sequences this as "Tanzania first, East Africa next, pan-Africa later,"
    with geographic expansion landing in Phase 5 (§7). Partway through this
@@ -117,3 +216,12 @@ Per §11's instruction to ask before locking in irreversible choices:
 - Scoped permissions, not role-only checks, for anything financial or
   safety-critical (§3) — extend `Permission` in `packages/shared/src/enums.ts`
   rather than adding new role-based `if` checks.
+- `Integration.secrets` is write-only from the API's perspective. No read
+  endpoint, log line, or audit entry should ever include a saved secret
+  value — only whether one is set and which keys exist
+  (`IntegrationsService`'s `toSafeIntegration`/`getEnabledForCategory`
+  split already enforces this; keep it that way when this grows into real
+  provider SDK calls in Phase 2). For production, `secrets` should also
+  move from plain `Json` to encryption-at-rest via a proper secrets
+  manager/KMS — the current column is functionally correct for the admin
+  workflow but is not yet hardened storage.

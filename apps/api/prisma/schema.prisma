@@ -50,6 +50,7 @@ model Organization {
   tourTemplates TourTemplate[]
   requests      EnquiryRequest[]
   places        Place[]
+  integrations  Integration[]
 
   @@map("organizations")
 }
@@ -391,6 +392,38 @@ model ProposalLink {
   quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
   @@map("proposal_links")
+}
+
+// ---------------------------------------------------------------------------
+// Platform (§6) — integrations, audit log
+// ---------------------------------------------------------------------------
+
+// Admin-configurable provider credentials (§4.9, §11) — resolves the "ask
+// before choosing a payment provider" question by making provider choice
+// and credentials something an admin adds after launch, from the Admin
+// Portal, rather than a build-time decision baked into the code.
+//
+// `secrets` (API keys, tokens, webhook signing secrets) is write-only from
+// the API's perspective: IntegrationsService never returns its contents
+// once saved, only whether it's been set. `config` holds non-secret fields
+// (account IDs, phone numbers, from-address) that are safe to display back.
+model Integration {
+  id             String              @id @default(cuid())
+  organizationId String
+  provider       String // IntegrationProvider enum value from @safaribrain/shared
+  category       String // IntegrationCategory enum value — denormalized for filtering
+  displayName    String
+  enabled        Boolean             @default(false)
+  config         Json                @default("{}")
+  secrets        Json                @default("{}")
+  createdById    String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider])
+  @@map("integrations")
 }
 
 // ---------------------------------------------------------------------------

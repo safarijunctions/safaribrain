@@ -75,6 +75,7 @@ export class PricingService {
       discountAmount: input.discountAmount,
       taxPercent: input.taxPercent,
       taxAmount,
+      commissionPercent: input.commissionPercent,
       commissionAmount,
       totalClientPrice,
       feeSourcesAsOf,

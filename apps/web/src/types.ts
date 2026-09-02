@@ -48,6 +48,7 @@ export interface PriceBreakdownDto {
   discountAmount: number;
   taxPercent: number;
   taxAmount: number;
+  commissionPercent: number;
   commissionAmount: number;
   totalClientPrice: number;
   feeSourcesAsOf: { parkFeeRuleId: string; label: string; asOfDate: string }[];
@@ -107,4 +108,34 @@ export interface ItineraryDay {
 
 export interface TourTemplateDetail extends TourTemplateSummary {
   versions: { id: string; versionNumber: number; termsMarkdown?: string; days: ItineraryDay[] }[];
+}
+
+export interface Integration {
+  id: string;
+  provider: string;
+  category: string;
+  displayName: string;
+  enabled: boolean;
+  config: Record<string, string>;
+  secretsConfigured: boolean;
+  secretKeys: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DashboardOverview {
+  requestsByStage: Record<string, number>;
+  quotesByStatus: Record<string, number>;
+  acceptedRevenue: { currency: string; total: number }[];
+  teamMembersCount: number;
+  integrationsEnabledCount: number;
+  openTasksCount: number;
+}
+
+export interface OrgMember {
+  id: string; // membership id
+  role: string;
+  permissions: string[];
+  createdAt: string;
+  user: { id: string; fullName: string; email: string; phone?: string; createdAt: string };
 }

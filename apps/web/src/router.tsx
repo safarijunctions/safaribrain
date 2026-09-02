@@ -3,6 +3,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { CrmInboxPage } from "./pages/CrmInboxPage";
 import { RequestDetailPage } from "./pages/RequestDetailPage";
 import { ProposalPage } from "./pages/ProposalPage";
+import { AdminPage } from "./pages/AdminPage";
 import { isAuthenticated } from "./lib/auth";
 import { AppShell } from "./components/AppShell";
 
@@ -40,6 +41,15 @@ const requestDetailRoute = createRoute({
   component: RequestDetailPage,
 });
 
+// Server-side enforcement is what actually matters (MANAGE_INTEGRATIONS /
+// MANAGE_USERS permission checks in the API) — this route is just where the
+// admin nav link in AppShell points.
+const adminRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/admin",
+  component: AdminPage,
+});
+
 // Public — no auth, per §5 "mobile, low-bandwidth, WhatsApp-first". A client
 // opens this link directly (e.g. from WhatsApp) with no account needed.
 const proposalRoute = createRoute({
@@ -51,7 +61,7 @@ const proposalRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
-  appLayoutRoute.addChildren([crmInboxRoute, requestDetailRoute]),
+  appLayoutRoute.addChildren([crmInboxRoute, requestDetailRoute, adminRoute]),
   proposalRoute,
 ]);
 

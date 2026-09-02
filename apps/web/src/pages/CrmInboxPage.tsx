@@ -6,9 +6,9 @@ import { EnquiryRequestSummary } from "../types";
 
 const STAGE_COLORS: Record<string, string> = {
   NEW: "bg-blue-100 text-blue-800",
-  QUOTED: "bg-amber-100 text-amber-800",
+  QUOTED: "bg-sunset-100 text-sunset-700",
   NEGOTIATING: "bg-purple-100 text-purple-800",
-  BOOKED: "bg-green-100 text-green-800",
+  BOOKED: "bg-acacia-100 text-acacia-800",
   COMPLETED: "bg-stone-200 text-stone-700",
   LOST: "bg-red-100 text-red-800",
 };
@@ -21,15 +21,15 @@ export function CrmInboxPage() {
   const [showForm, setShowForm] = useState(false);
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-semibold">Enquiry inbox</h1>
+          <h1 className="font-display text-2xl font-semibold text-clay-800">Enquiry inbox</h1>
           <p className="text-sm text-stone-500">One deduplicated contact and request per enquiry, from any channel.</p>
         </div>
         <button
           onClick={() => setShowForm((s) => !s)}
-          className="bg-savanna-600 hover:bg-savanna-700 text-white text-sm font-medium rounded px-4 py-2"
+          className="self-start sm:self-auto bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition"
         >
           {showForm ? "Close" : "+ New enquiry"}
         </button>
@@ -39,13 +39,13 @@ export function CrmInboxPage() {
 
       {isLoading && <p className="text-sm text-stone-500">Loading…</p>}
 
-      <div className="bg-white border border-stone-200 rounded-lg divide-y">
+      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-clay-900/5 overflow-hidden">
         {data?.map((r) => (
           <Link
             key={r.id}
             to="/crm/$requestId"
             params={{ requestId: r.id }}
-            className="flex items-center justify-between px-5 py-4 hover:bg-stone-50"
+            className="flex items-center justify-between px-5 py-4 hover:bg-clay-50/50 transition"
           >
             <div>
               <p className="font-medium">{r.contact.fullName}</p>
@@ -89,7 +89,7 @@ function NewEnquiryForm({ onCreated }: { onCreated: () => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="bg-white border border-stone-200 rounded-lg p-5 mb-6 grid grid-cols-2 gap-4">
+    <form onSubmit={submit} className="bg-white border border-stone-200 rounded-xl p-5 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4 shadow-sm shadow-clay-900/5">
       <div>
         <label className="block text-xs font-medium mb-1">Full name</label>
         <input
@@ -141,7 +141,7 @@ function NewEnquiryForm({ onCreated }: { onCreated: () => void }) {
           ))}
         </select>
       </div>
-      <div className="col-span-2">
+      <div className="sm:col-span-2">
         <label className="block text-xs font-medium mb-1">Notes</label>
         <textarea
           className="w-full border border-stone-300 rounded px-3 py-2 text-sm"
@@ -150,11 +150,11 @@ function NewEnquiryForm({ onCreated }: { onCreated: () => void }) {
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
         />
       </div>
-      <div className="col-span-2 flex justify-end">
+      <div className="sm:col-span-2 flex justify-end">
         <button
           type="submit"
           disabled={create.isPending}
-          className="bg-savanna-600 hover:bg-savanna-700 text-white text-sm font-medium rounded px-4 py-2 disabled:opacity-50"
+          className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition disabled:opacity-50"
         >
           {create.isPending ? "Creating…" : "Create enquiry"}
         </button>

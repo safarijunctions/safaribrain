@@ -21,6 +21,7 @@ export interface PriceBreakdownDto {
   discountAmount: number;
   taxPercent: number;
   taxAmount: number;
+  commissionPercent: number;
   commissionAmount: number;
   totalClientPrice: number;
   /** Fee source dates shown near price per §1.4 — "trust is visible". */

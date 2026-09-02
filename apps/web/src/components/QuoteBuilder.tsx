@@ -55,7 +55,7 @@ export function QuoteBuilder({
   }
 
   return (
-    <div className="border border-stone-200 rounded-lg p-4 bg-stone-50 space-y-4">
+    <div className="border border-stone-200 rounded-xl p-4 bg-clay-50/40 space-y-4">
       <div>
         <h3 className="text-sm font-medium mb-1">{template.title}</h3>
         <ol className="text-xs text-stone-500 list-decimal list-inside">
@@ -67,7 +67,7 @@ export function QuoteBuilder({
         </ol>
       </div>
 
-      <div className="grid grid-cols-4 gap-3 text-xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div>
           <label className="block font-medium mb-1">Currency</label>
           <input className="w-full border border-stone-300 rounded px-2 py-1" value={currency} onChange={(e) => setCurrency(e.target.value)} />
@@ -106,14 +106,14 @@ export function QuoteBuilder({
         <p className="text-xs font-medium mb-2">Supplier cost lines (park fees are added automatically from the itinerary)</p>
         <div className="space-y-2">
           {costLines.map((line, idx) => (
-            <div key={idx} className="grid grid-cols-12 gap-2 items-center text-xs">
+            <div key={idx} className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-center text-xs border border-stone-100 sm:border-0 rounded-lg sm:rounded-none p-2 sm:p-0">
               <input
-                className="col-span-4 border border-stone-300 rounded px-2 py-1"
+                className="col-span-2 sm:col-span-4 border border-stone-300 rounded px-2 py-1"
                 value={line.label}
                 onChange={(e) => updateLine(idx, { label: e.target.value })}
               />
               <select
-                className="col-span-2 border border-stone-300 rounded px-2 py-1"
+                className="col-span-1 sm:col-span-2 border border-stone-300 rounded px-2 py-1"
                 value={line.category}
                 onChange={(e) => updateLine(idx, { category: e.target.value as CostLineForm["category"] })}
               >
@@ -125,24 +125,24 @@ export function QuoteBuilder({
               </select>
               <input
                 type="number"
-                className="col-span-2 border border-stone-300 rounded px-2 py-1"
+                className="col-span-1 sm:col-span-2 border border-stone-300 rounded px-2 py-1"
                 value={line.quantity}
                 onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })}
                 placeholder="Qty"
               />
               <input
                 type="number"
-                className="col-span-2 border border-stone-300 rounded px-2 py-1"
+                className="col-span-1 sm:col-span-2 border border-stone-300 rounded px-2 py-1"
                 value={line.unitCost}
                 onChange={(e) => updateLine(idx, { unitCost: Number(e.target.value) })}
                 placeholder="Unit cost"
               />
-              <label className="col-span-1 flex items-center gap-1" title="Internal cost — never shown to the client">
+              <label className="col-span-1 sm:col-span-1 flex items-center gap-1" title="Internal cost — never shown to the client">
                 <input type="checkbox" checked={line.internal} onChange={(e) => updateLine(idx, { internal: e.target.checked })} />
                 internal
               </label>
               <button
-                className="col-span-1 text-red-500 hover:underline"
+                className="col-span-2 sm:col-span-1 text-red-500 hover:underline text-left sm:text-center"
                 onClick={() => setCostLines((lines) => lines.filter((_, i) => i !== idx))}
               >
                 remove
@@ -151,7 +151,7 @@ export function QuoteBuilder({
           ))}
         </div>
         <button
-          className="mt-2 text-xs text-savanna-700 hover:underline"
+          className="mt-2 text-xs text-clay-700 hover:underline"
           onClick={() =>
             setCostLines((lines) => [...lines, { label: "", category: "OTHER", quantity: 1, unitCost: 0, currency, internal: false }])
           }
@@ -165,7 +165,7 @@ export function QuoteBuilder({
       <button
         onClick={() => create.mutate()}
         disabled={create.isPending}
-        className="bg-savanna-600 hover:bg-savanna-700 text-white text-sm font-medium rounded px-4 py-2 disabled:opacity-50"
+        className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition disabled:opacity-50"
       >
         {create.isPending ? "Pricing…" : "Create quote draft"}
       </button>
