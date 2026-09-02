@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
+import { useParams, Link } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { MarketplaceListingDetail } from "../types";
+import { MarketplaceListingDetail, Departure } from "../types";
 import { AcaciaSilhouette } from "../components/AcaciaSilhouette";
 
 export function MarketplaceListingPage() {
@@ -13,6 +13,11 @@ export function MarketplaceListingPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["marketplace-listing", id],
     queryFn: () => api.get<MarketplaceListingDetail>(`/marketplace/templates/${id}`),
+  });
+
+  const { data: departures } = useQuery({
+    queryKey: ["marketplace-departures", id],
+    queryFn: () => api.get<Departure[]>(`/marketplace/templates/${id}/departures`),
   });
 
   const [fullName, setFullName] = useState("");
@@ -83,12 +88,40 @@ export function MarketplaceListingPage() {
             </section>
           )}
 
+          {departures && departures.length > 0 && (
+            <section className="border-t border-stone-200 pt-6">
+              <h2 className="font-display text-lg font-semibold text-clay-800 mb-3">Book a seat on an upcoming departure</h2>
+              <p className="text-xs text-stone-500 mb-3">Fixed date, fixed price, instant seat reservation — no quote needed.</p>
+              <div className="space-y-2">
+                {departures.map((d) => {
+                  const available = d.seats.filter((s) => s.status === "AVAILABLE").length;
+                  return (
+                    <Link
+                      key={d.id}
+                      to="/marketplace/departures/$departureId"
+                      params={{ departureId: d.id }}
+                      className="flex items-center justify-between border border-stone-200 rounded-lg px-4 py-3 text-sm hover:border-acacia-400 hover:bg-acacia-50/40 transition"
+                    >
+                      <span className="font-medium text-stone-800">{new Date(d.departureDate).toLocaleDateString(undefined, { weekday: "short", year: "numeric", month: "short", day: "numeric" })}</span>
+                      <span className="text-stone-500">
+                        {d.currency} {Number(d.pricePerSeat).toLocaleString()}/seat · {available} of {d.totalSeats} seats left
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
           {sent ? (
             <p className="text-center text-acacia-700 font-medium">
               🎉 Sent — {data.organization.name} will follow up with pricing and next steps.
             </p>
           ) : (
             <section className="border-t border-stone-200 pt-6">
+              {departures && departures.length > 0 && (
+                <p className="text-xs text-stone-500 mb-3">Prefer a custom date, group size, or a tweaked itinerary? Send an enquiry instead:</p>
+              )}
               {!showForm ? (
                 <button
                   onClick={() => setShowForm(true)}

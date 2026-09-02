@@ -305,6 +305,83 @@ Anthropic API key available to call the endpoint successfully, so the
 exercised against a live response. Whoever configures a real key should
 sanity-check one draft before relying on this.
 
+## What's built: the second buying mode (fixed departures, seat-map checkout)
+
+§1's product principles are numbered "do not violate," and #2 reads: *"Two
+buying modes. Support both custom safari enquiries (quote → negotiate →
+book) and instant booking on fixed joinable departures (seat-map
+checkout)."* Every prior batch in this build implemented the first mode
+only — this one adds the second, which §10.7 also names directly as an
+acceptance gate: *"a fixed departure prevents two users from buying the
+same seat and releases expired holds automatically."*
+
+- **Schema** (`Departure`, `Seat`): a `Departure` is a `TourTemplate` sold
+  on a fixed date at a fixed price per seat; `Seat` rows are generated when
+  the departure is created (`DeparturesService.generateSeats` — rows of 3,
+  first row `FRONT`, outer seats `WINDOW`, middle `AISLE`, matching §4.2's
+  named seat types). `Booking.quoteId` was made nullable and
+  `Booking.departureId` added so the *same* `Booking` model serves both
+  buying modes — a seat-map booking has `departureId` set and `quoteId`
+  null, a quote-negotiated one the reverse. This was a deliberate reuse
+  decision, not a shortcut: every existing operator tool (`BookingPanel`,
+  payment recording, guide manifest, receipt/e-ticket PDFs, the public
+  `/booking/:token` status page) works on a seat-map booking with zero new
+  code, verified live — see below.
+- **Concurrency-safe holds** (`DeparturesService.holdSeats`): the one hard
+  correctness requirement in this slice. A hold-acquisition transaction
+  runs at Postgres `SERIALIZABLE` isolation — when two requests race for
+  the same seat, Postgres aborts one with a genuine serialization failure
+  (Prisma surfaces this as error code `P2034`) rather than both believing
+  they succeeded; the loser gets a clean `409` naming the seat, with a
+  bounded retry (up to 3 attempts) so legitimate concurrent holds on
+  *different* seats in the same departure don't spuriously fail each
+  other. This is a DB-level guarantee, not an application-level race that
+  happens to usually work — see the concurrency test below for what "no
+  double booking" actually meant to verify.
+- **Lazy hold expiry**: a hold lasts 5 minutes (`HOLD_MINUTES`). Rather
+  than requiring a reliable background sweep job (infrastructure this
+  environment can't verify runs on schedule), every read path treats
+  `status=HELD && heldUntil <= now()` as available — `effectiveStatus()` in
+  `DeparturesService` and the same condition inline in `holdSeats`'s
+  transaction. A seat is functionally released the instant its hold lapses
+  from every caller's perspective, even though the stale `HELD` row isn't
+  proactively cleaned up. Documenting this explicitly since it's a
+  deliberate tradeoff, not an oversight — a production deployment with
+  real infrastructure could add a sweep job as a pure optimization (freeing
+  up unused rows) without changing correctness.
+- **Public flow**: `MarketplaceListingPage` shows upcoming departures under
+  the itinerary; each links to `/marketplace/departures/:id`
+  (`DepartureSeatMapPage`) — a seat grid (colored by available/held/booked,
+  "held by you" highlighted separately from "held by someone else"), a
+  client-generated `holderToken` (`crypto.randomUUID()`, stored in
+  `sessionStorage`, same unguessable-token trust model as
+  `ProposalLink`/`Booking.ticketToken` — no account needed, per §5), a hold
+  button, a live countdown, and a contact form that calls the confirm
+  endpoint and redirects straight into the existing
+  `/booking/:token` status page.
+- **Staff side**: the Admin Portal's "Marketplace" tab gained a
+  "Departures" section per template — open a departure (date, price/seat,
+  seat count), see booked/held counts against the total. Gated by
+  `MANAGE_CONTENT`, same permission as the publicly-listed toggle.
+- **Verified, not just built**: this is the one feature in the whole build
+  where I ran an actual concurrency test rather than reasoning about
+  correctness from the code. Fired 10 genuinely simultaneous `hold` requests
+  (`Promise.all`, ten different `holderToken`s) at the *same* seat —
+  exactly 1 succeeded, the other 9 got a clean `409`. Separately, fired 6
+  simultaneous holds at 6 *different* seats in the same departure and
+  confirmed all 6 succeeded (proving the retry logic doesn't cause false
+  conflicts between unrelated seats). Then drove the full public flow in a
+  real browser — pick seats, watch the price update, hold, watch the
+  countdown, fill the contact form, confirm, land on the booking status
+  page with the correct itinerary/total/balance — and confirmed the
+  resulting booking appears correctly in the operator's CRM (stage
+  `BOOKED`, correct party size, a note identifying it as an instant seat
+  booking) with the full existing `BookingPanel` (travelers, payments,
+  guide assignment, both PDFs) working on it unmodified. Confirmed
+  permission boundaries: creating a departure without `MANAGE_CONTENT`
+  gets 403, unauthenticated gets 401; attempting to hold an already-booked
+  seat gets 409; re-using a consumed hold token to book again gets 400.
+
 ## Visual design
 
 The app now has an actual brand identity instead of default Tailwind gray/

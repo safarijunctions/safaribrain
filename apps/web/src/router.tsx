@@ -6,6 +6,7 @@ import { ProposalPage } from "./pages/ProposalPage";
 import { BookingStatusPage } from "./pages/BookingStatusPage";
 import { MarketplacePage } from "./pages/MarketplacePage";
 import { MarketplaceListingPage } from "./pages/MarketplaceListingPage";
+import { DepartureSeatMapPage } from "./pages/DepartureSeatMapPage";
 import { AdminPage } from "./pages/AdminPage";
 import { isAuthenticated } from "./lib/auth";
 import { AppShell } from "./components/AppShell";
@@ -83,6 +84,16 @@ const marketplaceListingRoute = createRoute({
   component: MarketplaceListingPage,
 });
 
+// Public — §1.2's second buying mode, the seat-map instant-booking flow.
+// Static "departures" segment matched ahead of the dynamic $id template
+// route above, so /marketplace/departures/xyz never gets swallowed as a
+// template id.
+const departureSeatMapRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/marketplace/departures/$departureId",
+  component: DepartureSeatMapPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -91,6 +102,7 @@ const routeTree = rootRoute.addChildren([
   bookingStatusRoute,
   marketplaceRoute,
   marketplaceListingRoute,
+  departureSeatMapRoute,
 ]);
 
 export const router = createRouter({ routeTree });

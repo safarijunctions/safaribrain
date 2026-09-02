@@ -112,6 +112,38 @@ export interface TourTemplateDetail extends TourTemplateSummary {
   versions: { id: string; versionNumber: number; termsMarkdown?: string; days: ItineraryDay[] }[];
 }
 
+export interface DepartureSeatSummary {
+  status: "AVAILABLE" | "HELD" | "BOOKED";
+  heldUntil?: string | null;
+}
+
+export interface Departure {
+  id: string;
+  departureDate: string;
+  currency: string;
+  pricePerSeat: string;
+  totalSeats: number;
+  status: "OPEN" | "CLOSED" | "CANCELLED";
+  seats: DepartureSeatSummary[];
+}
+
+export interface PublicDeparture {
+  id: string;
+  departureDate: string;
+  currency: string;
+  pricePerSeat: string;
+  totalSeats: number;
+  tourTemplate: { title: string; organization: { name: string; country: string } };
+}
+
+export interface SeatMapSeat {
+  id: string;
+  label: string;
+  type: "WINDOW" | "AISLE" | "FRONT" | "ACCESSIBLE";
+  status: "AVAILABLE" | "HELD" | "BOOKED";
+  isMine: boolean;
+}
+
 export interface AiDraftDay {
   dayNumber: number;
   title: string;

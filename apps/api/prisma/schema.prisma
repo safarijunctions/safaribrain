@@ -53,6 +53,7 @@ model Organization {
   integrations  Integration[]
   bookings      Booking[]
   aiJobs        AiJob[]
+  departures    Departure[]
 
   @@map("organizations")
 }
@@ -287,6 +288,7 @@ model TourTemplate {
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   versions     TemplateVersion[]
   quotes       Quote[]
+  departures   Departure[]
 
   @@map("tour_templates")
 }
@@ -430,7 +432,11 @@ model Booking {
   id             String        @id @default(cuid())
   organizationId String
   requestId      String
-  quoteId        String        @unique
+  // Nullable — §1's "two buying modes": a quote-negotiated booking sets
+  // quoteId (QuotesService.accept); an instant seat-map booking on a fixed
+  // Departure sets departureId instead and never has a quote at all.
+  quoteId        String?       @unique
+  departureId    String?
   status         BookingStatus @default(PENDING)
   currency       String
   totalPrice     Decimal       @db.Decimal(12, 2)
@@ -449,12 +455,86 @@ model Booking {
 
   organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   request       EnquiryRequest        @relation(fields: [requestId], references: [id])
-  quote         Quote                 @relation(fields: [quoteId], references: [id])
+  quote         Quote?                @relation(fields: [quoteId], references: [id])
+  departure     Departure?            @relation(fields: [departureId], references: [id])
   termsSnapshot BookingTermsSnapshot?
   travelers     Traveler[]
   payments      Payment[]
+  seats         Seat[]
 
   @@map("bookings")
+}
+
+// ---------------------------------------------------------------------------
+// Departures (§6, §4.2, §7 Phase 3) — the second of the two buying modes §1.2
+// requires: fixed, joinable safaris a traveler can instantly book a seat on,
+// alongside (not instead of) the custom quote→negotiate→book flow above.
+// Booking, Traveler, Payment, BookingTermsSnapshot are all reused as-is —
+// an instant seat-map booking is still a Booking row, just one with
+// departureId set and quoteId null, so every existing operator tool
+// (BookingPanel, payments, guide manifest, receipt/e-ticket PDFs) works on
+// it with no new code.
+// ---------------------------------------------------------------------------
+
+enum DepartureStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+model Departure {
+  id             String          @id @default(cuid())
+  organizationId String
+  tourTemplateId String
+  departureDate  DateTime
+  currency       String
+  pricePerSeat   Decimal         @db.Decimal(12, 2)
+  totalSeats     Int
+  status         DepartureStatus @default(OPEN)
+  createdAt      DateTime        @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tourTemplate TourTemplate @relation(fields: [tourTemplateId], references: [id], onDelete: Cascade)
+  seats        Seat[]
+  bookings     Booking[]
+
+  @@map("departures")
+}
+
+enum SeatType {
+  WINDOW
+  AISLE
+  FRONT
+  ACCESSIBLE
+}
+
+enum SeatStatus {
+  AVAILABLE
+  HELD
+  BOOKED
+}
+
+// Atomicity for hold acquisition lives in DeparturesService (Postgres
+// SERIALIZABLE transaction, not a DB constraint — Postgres has no native
+// "unique while not expired" constraint). Expiry is lazy: every read path
+// treats `status=HELD && heldUntil <= now()` as available rather than
+// requiring a background sweep job, so a seat is effectively released the
+// instant its hold lapses without needing reliable cron infrastructure.
+model Seat {
+  id          String     @id @default(cuid())
+  departureId String
+  label       String // e.g. "1A"
+  type        SeatType
+  status      SeatStatus @default(AVAILABLE)
+  heldUntil   DateTime?
+  holderToken String? // opaque, client-generated — same trust model as ProposalLink/Booking.ticketToken
+  bookingId   String?
+
+  departure Departure @relation(fields: [departureId], references: [id], onDelete: Cascade)
+  booking   Booking?  @relation(fields: [bookingId], references: [id])
+
+  @@unique([departureId, label])
+  @@map("seats")
 }
 
 // Write-once — same discipline as PriceSnapshot (§1.8, §6). Frozen at the

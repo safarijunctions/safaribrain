@@ -86,6 +86,32 @@ the operator's request page, a new "Booking" panel appears:
     the public booking page) with every traveler's passport number and date
     of birth for park-gate entry logs, plus the day-by-day itinerary.
 
+### The second buying mode — instant seat-map booking
+
+Everything above is the custom-quote path (enquiry → quote → negotiate →
+book). The master brief also requires a second, independent path: instant
+booking on a fixed departure with no quote at all. To try it:
+
+11. Sign in as **admin**, open **Admin → Marketplace**, expand
+    "Departures" on the seeded template, and open one (a date, a price per
+    seat, a seat count).
+12. Sign out, go to `/marketplace`, open that listing — an "Upcoming
+    departures" section now appears above the enquiry form. Click a
+    departure date.
+13. Pick seats on the seat map (colored by available/held/booked), watch
+    the price update, then **hold** them — a 5-minute countdown starts.
+    Fill in your name/email and **confirm** — you land straight on the same
+    `/booking/:token` status page the quote flow produces, because it's
+    the same `Booking` model underneath.
+14. Back in the operator's CRM, the resulting request appears with stage
+    `BOOKED` and no quote attached — the same `BookingPanel` (travelers,
+    payments, guide assignment, PDFs) works on it exactly as it would on a
+    quote-based booking.
+
+The concurrency guarantee this mode depends on — two people can't buy the
+same seat — was verified with an actual test, not just reasoned about: ten
+simultaneous hold requests for one seat, exactly one wins.
+
 ## Admin Portal
 
 Sign in as **admin** and open the "Admin" link in the header:
