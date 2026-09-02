@@ -92,6 +92,16 @@ Sign in as **admin** and open the "Admin" link in the header:
 
 - **Overview** — requests by stage, quotes by status, accepted revenue,
   team size, integrations enabled, open tasks. Read-only, ADMIN-role only.
+- **Content** — add places (national parks, attractions, any country — not
+  just Tanzania) and their fee rules, filterable by country. This is how
+  the catalog grows beyond the seed data, without an engineer involved.
+- **Marketplace** — toggle which tour templates are publicly browsable at
+  `/marketplace` with no login required; anyone who submits an enquiry
+  there lands in the same CRM pipeline as any other lead.
+- **AI Drafts** — describe a trip in plain language and an AI drafts a
+  day-by-day itinerary you can edit before approving it into a real tour
+  template. Requires an `LLM_PROVIDER` integration below; nothing is
+  created until you explicitly approve a draft.
 - **Integrations** — add real credentials for Stripe, M-Pesa, Tigo Pesa,
   Airtel Money, MTN MoMo, WhatsApp Business, SMS, SMTP, or an LLM provider
   whenever you're ready to go live with them. The app works fully without

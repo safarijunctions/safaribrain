@@ -52,6 +52,7 @@ model Organization {
   places        Place[]
   integrations  Integration[]
   bookings      Booking[]
+  aiJobs        AiJob[]
 
   @@map("organizations")
 }
@@ -71,6 +72,8 @@ model User {
   auditLogEntries AuditLog[]
   tasks           Task[]
   recordedPayments Payment[]
+  aiJobsRequested AiJob[] @relation("AiJobRequestedBy")
+  aiJobsDecided   AiJob[] @relation("AiJobDecidedBy")
 
   @@map("users")
 }
@@ -273,6 +276,11 @@ model TourTemplate {
   title          String
   summary        String?
   durationDays   Int
+  // Phase 3 (§7) marketplace: a template an org has opted to show to
+  // travelers browsing without an account, cross-organization. Off by
+  // default — a template only appears once an operator deliberately lists
+  // it, never automatically just by existing.
+  publiclyListed Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -498,6 +506,52 @@ model Payment {
   recordedBy User?   @relation(fields: [recordedById], references: [id])
 
   @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Automation (§6, §9, §7 Phase 4) — AI governance. Every AI-drafted output
+// sits here as DRAFTED and can never affect price, published content, or a
+// confirmed booking until a human explicitly APPROVEs it (§1.3, §9) — the
+// approval itself, who made it and when, is retained on this same row
+// rather than only in audit_log, so the provenance travels with the draft.
+// ---------------------------------------------------------------------------
+
+enum AiJobKind {
+  ITINERARY_DRAFT
+  PROPOSAL_REWRITE
+  TRANSLATION
+  FEE_EXTRACTION
+  NEWS_SUMMARY
+  REPLY_DRAFT
+}
+
+enum AiJobApprovalStatus {
+  DRAFTED
+  APPROVED
+  REJECTED
+}
+
+model AiJob {
+  id            String              @id @default(cuid())
+  organizationId String
+  kind          AiJobKind
+  status        AiJobApprovalStatus @default(DRAFTED)
+  prompt        String
+  model         String // provider/model identifier actually used — §9 provenance
+  output        Json // the raw drafted content, never applied anywhere until approved
+  requestedById String?
+  decidedById   String?
+  decidedAt     DateTime?
+  resultEntityType String? // what approving this created, e.g. "TourTemplate"
+  resultEntityId    String?
+  createdAt     DateTime            @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy  User?        @relation("AiJobRequestedBy", fields: [requestedById], references: [id])
+  decidedBy    User?        @relation("AiJobDecidedBy", fields: [decidedById], references: [id])
+
+  @@index([organizationId, kind, status])
+  @@map("ai_jobs")
 }
 
 // ---------------------------------------------------------------------------

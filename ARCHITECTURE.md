@@ -213,6 +213,98 @@ document from anything the client sees.
   same booking still omits `guideName`/`guidePhone`/`pickupNotes` and every
   traveler's `dateOfBirth`/`passportNumber`.
 
+## What's built (Phases 3-5, first slices)
+
+Continuing straight past Phase 2 rather than stopping — three first slices,
+one per remaining phase, each scoped to what's actually buildable and
+verifiable in this environment (see the network-access note under
+"Deliberately not built yet" for what that ruled out).
+
+### Phase 5 groundwork: admin content management (pan-African scope)
+
+The pan-African content question raised mid-build (§1.7: every national
+park, attraction, and destination across Africa, eventually) was always a
+content-ops problem, not a schema one — `Place.country` was already free
+text. What was actually missing was any way to add content without an
+engineer running a seed script. `ContentService`/`ContentController` now
+have full CRUD for `Place` (gated by a new `MANAGE_CONTENT` permission) and
+`ParkFeeRule` (gated by the existing `PUBLISH_FEE` — fee values are
+financial, place metadata isn't, so they're scoped separately per §3). The
+Admin Portal's new "Content" tab lists places with a country filter and
+lets an admin add a place in any country, then attach fee rules to it —
+verified by adding Maasai Mara National Reserve (Kenya) and a fee rule to
+it live, confirming the country filter picks it up immediately. This
+doesn't populate the rest of Africa's content (still a business-development
+effort — partnerships, bulk import), but the platform can now grow one
+country at a time from today, through the UI, by anyone with the
+permission.
+
+### Phase 3: marketplace (public browsing + enquiry)
+
+A `TourTemplate.publiclyListed` flag (off by default, toggled from a new
+Admin "Marketplace" tab) controls what a traveler can find at `/marketplace`
+— `MarketplaceController` is public (no auth, same reasoning as every other
+public route in this app) and deliberately cross-organization: it queries
+`publiclyListed=true` templates belonging to a `verified` org rather than
+scoping by `organizationId` like every other service in the codebase,
+which is why it's its own module rather than an extension of
+`ProductsService`. A listing page shows the itinerary and an enquiry form;
+submitting it calls straight into the existing `CrmService.createRequest`
+(the same method the operator's own "new enquiry" form uses) — a
+marketplace lead lands in the identical pipeline as any other enquiry, not
+a second-class queue, with the listing title prepended to `notes` for
+context and `interests` set from it. No pricing is exposed at any point in
+this flow (`TourTemplate`/`TemplateVersion` never carried pricing — that's
+computed per-quote — so there's nothing to accidentally leak). Verified
+end-to-end: browsed the seeded listing, submitted an enquiry as "Peter
+Otieno" from Kenya, and confirmed it appeared in the operator's CRM inbox
+with the correct contact, party size, and marketplace-sourced note.
+
+### Phase 4: AI governance + first real feature (itinerary drafting)
+
+The `AiJob` model (using the `AiJobKind`/`AiJobApprovalStatus` enums already
+scaffolded in `packages/shared` since Phase 0/1 but never backed by a table)
+is the governance record §9 requires: every AI output is written as
+`DRAFTED` with its prompt and the model that produced it, and nothing it
+contains can become real content until a human calls the approve endpoint
+with a payload they control — `AiJobsService.approveItinerary` builds the
+`TourTemplate` from the *submitted* `ApproveItineraryDto`, not from the
+job's stored `output`, so an edited title/day wording actually is what gets
+created, not just cosmetically re-displayed. The approval records who
+decided and when (`decidedById`/`decidedAt`) and links back to what it
+created (`resultEntityType`/`resultEntityId`); a job can't be approved
+twice (`BadRequestException` if already decided).
+
+The one real feature built on this: an operator describes a trip in plain
+language, `LlmService` calls Anthropic's Messages API using whatever
+`LLM_PROVIDER` credentials an admin has stored via Integrations, and the
+result is parsed into a day-by-day draft the operator can edit inline
+before approving it into a real `TourTemplate` (unpublished by default —
+listing it on the marketplace is still a separate, deliberate step). This
+client is intentionally Anthropic-specific rather than a speculative
+multi-vendor abstraction — see the network-access note below for why that
+was the only provider this environment could even reach to build against,
+and a second provider is additive whenever there's a second real feature
+that needs one, not before.
+
+**What's verified and what isn't, specifically:** the "not configured" path
+(current state — no LLM integration exists) was verified live in a browser,
+showing a clear actionable error. Adding a real (but intentionally invalid)
+API key via the Integrations UI and generating a draft confirmed the entire
+pipeline — credential retrieval, the HTTPS request reaching
+`api.anthropic.com`, and Anthropic's own `401 authentication_error` — surfaces
+correctly in the UI rather than crashing. The approve→create-template path
+was verified by seeding a synthetic `DRAFTED` job directly and driving it
+through the real approve endpoint: confirmed the created template used the
+*edited* title/description (not the AI's raw output), confirmed
+`resultEntityType`/`resultEntityId`/`decidedById` were set correctly, and
+confirmed a second approve attempt on the same job is rejected. What's
+*not* verified is an actual model completion — this environment has no
+Anthropic API key available to call the endpoint successfully, so the
+`parseItineraryResponse` JSON-parsing path has been reviewed but not
+exercised against a live response. Whoever configures a real key should
+sanity-check one draft before relying on this.
+
 ## Visual design
 
 The app now has an actual brand identity instead of default Tailwind gray/
@@ -295,18 +387,44 @@ reassignments. Admin visibility doesn't mean admin invisibility.
   source and scraping as fallback.
 - **Payment gateway integration** — bookings currently take manual
   bank-transfer/cash/mobile-money payments recorded by staff (§4.3, a
-  first-class method, not a stopgap). A real Stripe charge or M-Pesa STK
-  push against the credentials an admin already stores via Integrations is
-  the next Phase 2 slice, at the
-  `IntegrationsService.getEnabledForCategory(orgId, "PAYMENT")` extension
-  point.
+  first-class method, not a stopgap). This is deliberately *not* built in
+  this pass, and specifically because it can't be — see "A note on network
+  access" immediately below, not because of any remaining design question.
+  The extension point (`IntegrationsService.getEnabledForCategory(orgId,
+  "PAYMENT")`) is unchanged from Phase 1 and ready whenever a session with
+  real network access and a test-mode Stripe/M-Pesa credential can build
+  and actually verify it.
 - **PWA offline support, SOS/medevac, vehicle compliance, calendar/supplier
   confirmations** — still-unbuilt pieces of Phase 2's "Booking and trip
   delivery" scope per §7/§4.3. Guide manifests are now built (see above);
   these remaining items need a booking to already exist, which it now does.
-- **Marketplace, trade portal, automation (Phase 3-4), super-app (Phase 5)**
-  — untouched, per the brief's own phase order. Nothing here should be
-  built ahead of its phase.
+- **Trade portal, deeper Phase 4 automation (translation, fee extraction,
+  proposal rewrite, news summary — the other `AiJobKind` values beyond
+  `ITINERARY_DRAFT`), super-app/native app** — Phase 3's marketplace and
+  Phase 4's AI-governance pattern now both have a first real slice (see
+  above); these are the remaining pieces of those same phases, deferred to
+  keep this batch reviewable rather than because anything blocks them.
+
+### A note on network access (why the payment gateway wasn't attempted)
+
+This build session's sandbox has no general internet access — only an
+allowlisted set of dev-infra hosts (npm, GitHub, `api.anthropic.com`) are
+reachable; confirmed directly with `curl` against `api.stripe.com`,
+`api.openai.com`, and a plain `google.com` request, all of which fail at
+the network layer before any credential is even sent. There is also no
+Stripe/M-Pesa/OpenAI credential available to test against even if there
+were network access. Every other integration in this codebase (payment
+methods, WhatsApp, SMS, the AI itinerary drafter) was built *and verified
+end-to-end* before being considered done, including the negative paths —
+that discipline is the reason bugs like the leaked password hash and the
+dropped `commissionPercent` were caught during this build instead of in
+production. Writing a Stripe `checkout.session.create` call, a webhook
+signature verifier, and the currency/idempotency handling around real
+money, and shipping it *unable to run it even once*, would break that
+discipline for the highest-stakes code in the app. The Anthropic-backed AI
+feature above got to ship specifically because `api.anthropic.com` turned
+out to be reachable — that was verified with `curl` before writing a line
+of the feature, not assumed.
 - **AI itinerary builder / any LLM call** (§4.4, §9) — no LLM provider has
   been chosen yet (see open decisions below), and §9 requires every
   AI-drafted price/content change to carry model/prompt version, sources,
@@ -331,29 +449,33 @@ Per §11's instruction to ask before locking in irreversible choices:
 2. **Native app timeline.** §2 already resolves this in principle — PWA
    first, Capacitor wrap only once PWA engagement is proven — so no action
    needed until that milestone is reached.
-3. **Exact LLM provider/model.** §2 suggests GPT-4o-mini "or equivalent." An
-   admin can now store an `LLM_PROVIDER` integration's API key from the
-   Admin Portal (same credential-storage mechanism as payments), so the key
-   itself is no longer a blocker — but §9's governance fields (model/prompt
-   version recorded on every `ai_jobs` row) are provider-specific, so the
-   first Phase 4 AI feature still needs a firm choice of *which* provider's
-   client library and model identifiers to code against.
-4. **Pan-African content scope, raised mid-build.** The brief's own §1.7
-   sequences this as "Tanzania first, East Africa next, pan-Africa later,"
-   with geographic expansion landing in Phase 5 (§7). Partway through this
-   build the user asked for the platform to eventually hold *every* national
-   park, attraction, and destination across Africa — not just well-known
-   ones — for an international audience. The schema already supports this
-   with no redesign: `Place.country` and `Organization.country` are
-   free-form strings, not hardcoded to Tanzania. What's still open is
-   *sequencing*: populating that scale of content is a content-ops effort
-   (bulk import via the `import_jobs`/`export_jobs` Platform domain in §6,
-   plus partnerships with national tourism boards/park authorities per
-   country) rather than a schema change, and the brief's own phase order
-   puts it later. Needs a decision on whether to start building the
-   bulk-import pipeline and sourcing pan-African park/attraction data now,
-   ahead of Phase 5, or hold it until the sales-operating-system core
-   (current phase) and booking (Phase 2) are further along.
+3. **Exact LLM provider/model** — partially resolved, not fully. §2
+   suggests GPT-4o-mini "or equivalent"; this pass's one AI feature
+   (itinerary drafting, see above) is coded against Anthropic's Messages
+   API specifically, not because Anthropic was chosen as *the* platform
+   answer, but because this build session's sandbox can only reach
+   `api.anthropic.com` among LLM vendors (verified with `curl`, OpenAI's
+   API is unreachable from here) — see "A note on network access" above.
+   The `ai_jobs.model` field already records which model produced each
+   draft, so nothing about the governance schema is Anthropic-specific;
+   what's still an open, unmade decision is whether Anthropic is the
+   product's actual choice going forward or just what one dev session
+   could reach, and whether a second provider is worth the abstraction
+   once there's a second real feature that needs one.
+4. **Pan-African content scope, raised mid-build** — groundwork shipped
+   this pass, sourcing is still open. The brief's own §1.7 sequences this
+   as "Tanzania first, East Africa next, pan-Africa later," with geographic
+   expansion landing in Phase 5 (§7). The schema already supported this
+   with no redesign (`Place.country`/`Organization.country` are free-form
+   strings), and now there's a UI for it too: the Admin Portal's "Content"
+   tab lets an admin add a place (any country) and its fee rules directly,
+   without an engineer running a seed script — verified live by adding a
+   Kenyan park. What's still open is *sourcing at scale*: getting the rest
+   of Africa's parks/attractions into the system is a content-ops effort
+   (bulk import, partnerships with national tourism boards/park
+   authorities per country), not a schema or tooling gap anymore. Needs a
+   decision on whether to invest in a bulk-import pipeline now or keep
+   adding countries one at a time through the UI as they come up.
 
 ## Non-negotiables carried forward (don't relax these later)
 
@@ -362,7 +484,11 @@ Per §11's instruction to ask before locking in irreversible choices:
   either.
 - No AI action may silently alter a confirmed price, published content, a
   confirmed booking, or safety-critical information (§9) — every future AI
-  feature needs a human-approval step before it lands, not after.
+  feature needs a human-approval step before it lands, not after. `AiJob`
+  now enforces this in code, not just in principle: `AiJobsService`'s
+  create-on-approve methods build the resulting entity from the human's
+  *submitted* payload, never from the stored AI `output` directly — extend
+  this pattern for every future `AiJobKind`, don't shortcut it.
 - Scoped permissions, not role-only checks, for anything financial or
   safety-critical (§3) — extend `Permission` in `packages/shared/src/enums.ts`
   rather than adding new role-based `if` checks.

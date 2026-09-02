@@ -96,6 +96,7 @@ export interface TourTemplateSummary {
   title: string;
   summary?: string;
   durationDays: number;
+  publiclyListed?: boolean;
 }
 
 export interface ItineraryDay {
@@ -109,6 +110,58 @@ export interface ItineraryDay {
 
 export interface TourTemplateDetail extends TourTemplateSummary {
   versions: { id: string; versionNumber: number; termsMarkdown?: string; days: ItineraryDay[] }[];
+}
+
+export interface AiDraftDay {
+  dayNumber: number;
+  title: string;
+  description?: string;
+  mealsIncluded: string[];
+}
+
+export interface AiItineraryDraft {
+  id: string;
+  status: "DRAFTED" | "APPROVED" | "REJECTED";
+  prompt: string;
+  model: string;
+  output: { title: string; summary: string; days: AiDraftDay[] };
+  createdAt: string;
+  requestedBy?: { id: string; fullName: string } | null;
+}
+
+export interface MarketplaceListingSummary {
+  id: string;
+  title: string;
+  summary?: string | null;
+  durationDays: number;
+  organization: { name: string; country: string };
+}
+
+export interface MarketplaceListingDetail extends MarketplaceListingSummary {
+  versions: { id: string; versionNumber: number; termsMarkdown?: string | null; days: ItineraryDay[] }[];
+}
+
+export interface FeeRule {
+  id: string;
+  label: string;
+  residency: string;
+  ageBand?: string | null;
+  unit: string;
+  amount: string;
+  currency: string;
+  sourceUrl?: string | null;
+  sourceAsOf: string;
+}
+
+export interface Place {
+  id: string;
+  name: string;
+  country: string;
+  kind: string;
+  description?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  feeRules: FeeRule[];
 }
 
 export interface Integration {

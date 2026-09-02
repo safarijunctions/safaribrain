@@ -26,6 +26,10 @@ export enum Permission {
   // separate from MANAGE_USERS/ADMIN role so credential access can be
   // granted narrowly, per §3's dual-control principle.
   MANAGE_INTEGRATIONS = "MANAGE_INTEGRATIONS",
+  // Creating/editing places (national parks, attractions, destinations) —
+  // separate from PUBLISH_FEE, which gates the financial fee-rule values
+  // attached to a place, per §3's principle of scoping by consequence.
+  MANAGE_CONTENT = "MANAGE_CONTENT",
 }
 
 // Providers an admin can configure from the Admin Portal after launch,

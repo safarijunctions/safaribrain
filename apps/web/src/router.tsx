@@ -4,6 +4,8 @@ import { CrmInboxPage } from "./pages/CrmInboxPage";
 import { RequestDetailPage } from "./pages/RequestDetailPage";
 import { ProposalPage } from "./pages/ProposalPage";
 import { BookingStatusPage } from "./pages/BookingStatusPage";
+import { MarketplacePage } from "./pages/MarketplacePage";
+import { MarketplaceListingPage } from "./pages/MarketplaceListingPage";
 import { AdminPage } from "./pages/AdminPage";
 import { isAuthenticated } from "./lib/auth";
 import { AppShell } from "./components/AppShell";
@@ -67,12 +69,28 @@ const bookingStatusRoute = createRoute({
   component: BookingStatusPage,
 });
 
+// Public — Phase 3 (§7) marketplace: browsing and enquiring never requires
+// an account, same principle as every other public route in this app.
+const marketplaceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/marketplace",
+  component: MarketplacePage,
+});
+
+const marketplaceListingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/marketplace/$id",
+  component: MarketplaceListingPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   appLayoutRoute.addChildren([crmInboxRoute, requestDetailRoute, adminRoute]),
   proposalRoute,
   bookingStatusRoute,
+  marketplaceRoute,
+  marketplaceListingRoute,
 ]);
 
 export const router = createRouter({ routeTree });

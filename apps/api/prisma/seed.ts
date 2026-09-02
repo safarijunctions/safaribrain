@@ -139,6 +139,7 @@ async function main() {
       title: "Classic Northern Circuit — 4 Days",
       summary: "Tarangire, Ngorongoro Crater and Serengeti in one unforgettable loop.",
       durationDays: 4,
+      publiclyListed: true,
       versions: {
         create: [
           {
