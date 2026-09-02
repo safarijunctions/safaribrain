@@ -61,6 +61,7 @@ export class CrmService {
     });
 
     await this.audit.record({
+      organizationId,
       actorId,
       action: "request.create",
       entityType: "EnquiryRequest",
@@ -100,7 +101,23 @@ export class CrmService {
       where: { id },
       data: { stage, pipelineLog: { create: [{ stage, note }] } },
     });
-    await this.audit.record({ actorId, action: "request.stage_change", entityType: "EnquiryRequest", entityId: id, metadata: { stage } });
+    await this.audit.record({ organizationId, actorId, action: "request.stage_change", entityType: "EnquiryRequest", entityId: id, metadata: { stage } });
+    return updated;
+  }
+
+  // Support tool: reassign a stuck or orphaned enquiry to a different team
+  // member — e.g. the original owner is out sick and a client is waiting.
+  // Restricted to admins at the controller layer (RolesGuard).
+  async setOwner(organizationId: string, id: string, actorId: string | undefined, ownerId: string | null) {
+    await this.getRequest(organizationId, id);
+
+    if (ownerId) {
+      const membership = await this.prisma.membership.findFirst({ where: { userId: ownerId, organizationId } });
+      if (!membership) throw new NotFoundException("That person is not a member of this organization");
+    }
+
+    const updated = await this.prisma.enquiryRequest.update({ where: { id }, data: { ownerId }, include: { owner: true } });
+    await this.audit.record({ organizationId, actorId, action: "request.reassign_owner", entityType: "EnquiryRequest", entityId: id, metadata: { ownerId } });
     return updated;
   }
 }

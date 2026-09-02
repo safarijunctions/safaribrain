@@ -37,7 +37,7 @@ export class UsersService {
       const membership = await this.prisma.membership.create({
         data: { userId: existingUser.id, organizationId, role: dto.role, permissions: dto.permissions ?? [] },
       });
-      await this.audit.record({ actorId, action: "user.add_to_org", entityType: "Membership", entityId: membership.id, metadata: { role: dto.role } });
+      await this.audit.record({ organizationId, actorId, action: "user.add_to_org", entityType: "Membership", entityId: membership.id, metadata: { role: dto.role } });
       const { passwordHash: _existingHash, ...safeExistingUser } = existingUser;
       return { user: safeExistingUser, membership, tempPassword: null };
     }
@@ -55,7 +55,7 @@ export class UsersService {
       include: { memberships: true },
     });
 
-    await this.audit.record({ actorId, action: "user.invite", entityType: "User", entityId: user.id, metadata: { role: dto.role } });
+    await this.audit.record({ organizationId, actorId, action: "user.invite", entityType: "User", entityId: user.id, metadata: { role: dto.role } });
 
     // Returned once, at creation, so the admin can share it — never
     // retrievable again afterwards. The password hash never leaves the server.
@@ -71,8 +71,31 @@ export class UsersService {
       where: { id: membershipId },
       data: { role: dto.role, permissions: dto.permissions },
     });
-    await this.audit.record({ actorId, action: "user.update_membership", entityType: "Membership", entityId: membershipId, metadata: { ...dto } });
+    await this.audit.record({ organizationId, actorId, action: "user.update_membership", entityType: "Membership", entityId: membershipId, metadata: { ...dto } });
     return updated;
+  }
+
+  // The single most common support request: someone is locked out. An admin
+  // generates a fresh one-time password the same way an invite does — no
+  // separate "forgot password" email flow needed until a messaging
+  // integration exists to send one automatically.
+  async resetPassword(organizationId: string, actorId: string | undefined, membershipId: string) {
+    const membership = await this.prisma.membership.findFirst({ where: { id: membershipId, organizationId }, include: { user: true } });
+    if (!membership) throw new NotFoundException("Membership not found");
+
+    const tempPassword = crypto.randomBytes(9).toString("base64url");
+    const passwordHash = await bcrypt.hash(tempPassword, 10);
+    await this.prisma.user.update({ where: { id: membership.userId }, data: { passwordHash } });
+
+    await this.audit.record({
+      organizationId,
+      actorId,
+      action: "user.reset_password",
+      entityType: "User",
+      entityId: membership.userId,
+    });
+
+    return { email: membership.user.email, tempPassword };
   }
 
   async removeMembership(organizationId: string, actorId: string | undefined, membershipId: string) {
@@ -80,7 +103,7 @@ export class UsersService {
     if (!membership) throw new NotFoundException("Membership not found");
 
     await this.prisma.membership.delete({ where: { id: membershipId } });
-    await this.audit.record({ actorId, action: "user.remove_membership", entityType: "Membership", entityId: membershipId });
+    await this.audit.record({ organizationId, actorId, action: "user.remove_membership", entityType: "Membership", entityId: membershipId });
     return { removed: true };
   }
 }

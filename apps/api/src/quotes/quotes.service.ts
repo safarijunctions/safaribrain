@@ -68,7 +68,7 @@ export class QuotesService {
       data: { stage: RequestStage.QUOTED, pipelineLog: { create: [{ stage: RequestStage.QUOTED, note: `Quote ${quote.id} drafted` }] } },
     });
 
-    await this.audit.record({ actorId, action: "quote.create", entityType: "Quote", entityId: quote.id });
+    await this.audit.record({ organizationId, actorId, action: "quote.create", entityType: "Quote", entityId: quote.id });
     return quote;
   }
 
@@ -102,7 +102,7 @@ export class QuotesService {
       include: { versions: { orderBy: { versionNo: "desc" } } },
     });
 
-    await this.audit.record({ actorId, action: "quote.revise", entityType: "Quote", entityId: quoteId, metadata: { versionNo: nextVersionNo } });
+    await this.audit.record({ organizationId, actorId, action: "quote.revise", entityType: "Quote", entityId: quoteId, metadata: { versionNo: nextVersionNo } });
     return updated;
   }
 
@@ -111,7 +111,7 @@ export class QuotesService {
     if (quote.status !== QuoteStatus.DRAFT) throw new BadRequestException(`Cannot submit a quote in status ${quote.status}`);
 
     const updated = await this.prisma.quote.update({ where: { id: quoteId }, data: { status: QuoteStatus.PENDING_APPROVAL } });
-    await this.audit.record({ actorId, action: "quote.submit_for_approval", entityType: "Quote", entityId: quoteId });
+    await this.audit.record({ organizationId, actorId, action: "quote.submit_for_approval", entityType: "Quote", entityId: quoteId });
     return updated;
   }
 
@@ -127,7 +127,7 @@ export class QuotesService {
     const nextStatus = decision === "APPROVED" ? QuoteStatus.APPROVED : QuoteStatus.CHANGES_REQUESTED;
     const updated = await this.prisma.quote.update({ where: { id: quoteId }, data: { status: nextStatus } });
 
-    await this.audit.record({ actorId: approverId, action: `quote.${decision.toLowerCase()}`, entityType: "Quote", entityId: quoteId, metadata: { reason } });
+    await this.audit.record({ organizationId, actorId: approverId, action: `quote.${decision.toLowerCase()}`, entityType: "Quote", entityId: quoteId, metadata: { reason } });
     return updated;
   }
 
@@ -146,7 +146,7 @@ export class QuotesService {
       data: { pipelineLog: { create: [{ stage: RequestStage.NEGOTIATING, note: "Proposal sent to client" }] }, stage: RequestStage.NEGOTIATING },
     });
 
-    await this.audit.record({ actorId, action: "quote.send", entityType: "Quote", entityId: quoteId, metadata: { proposalToken: proposalLink.token } });
+    await this.audit.record({ organizationId, actorId, action: "quote.send", entityType: "Quote", entityId: quoteId, metadata: { proposalToken: proposalLink.token } });
     return proposalLink;
   }
 
@@ -188,7 +188,17 @@ export class QuotesService {
   }
 
   async accept(token: string) {
-    const link = await this.prisma.proposalLink.findUnique({ where: { token }, include: { quote: { include: { versions: { orderBy: { versionNo: "desc" }, take: 1 } } } } });
+    const link = await this.prisma.proposalLink.findUnique({
+      where: { token },
+      include: {
+        quote: {
+          include: {
+            versions: { orderBy: { versionNo: "desc" }, take: 1 },
+            request: { select: { organizationId: true } },
+          },
+        },
+      },
+    });
     if (!link) throw new NotFoundException("Proposal not found");
     if (link.quote.status !== QuoteStatus.SENT) throw new BadRequestException(`Cannot accept a quote in status ${link.quote.status}`);
 
@@ -213,12 +223,21 @@ export class QuotesService {
       }),
     ]);
 
-    await this.audit.record({ action: "quote.accept", entityType: "Quote", entityId: link.quoteId, metadata: { token } });
+    await this.audit.record({
+      organizationId: link.quote.request.organizationId,
+      action: "quote.accept",
+      entityType: "Quote",
+      entityId: link.quoteId,
+      metadata: { token },
+    });
     return { accepted: true };
   }
 
   async requestChanges(token: string, note?: string) {
-    const link = await this.prisma.proposalLink.findUnique({ where: { token }, include: { quote: true } });
+    const link = await this.prisma.proposalLink.findUnique({
+      where: { token },
+      include: { quote: { include: { request: { select: { organizationId: true } } } } },
+    });
     if (!link) throw new NotFoundException("Proposal not found");
     if (link.quote.status !== QuoteStatus.SENT) throw new BadRequestException(`Cannot request changes on a quote in status ${link.quote.status}`);
 
@@ -227,7 +246,13 @@ export class QuotesService {
       where: { id: link.quote.requestId },
       data: { stage: RequestStage.NEGOTIATING, pipelineLog: { create: [{ stage: RequestStage.NEGOTIATING, note: note ?? "Client requested changes" }] } },
     });
-    await this.audit.record({ action: "quote.changes_requested", entityType: "Quote", entityId: link.quoteId, metadata: { note } });
+    await this.audit.record({
+      organizationId: link.quote.request.organizationId,
+      action: "quote.changes_requested",
+      entityType: "Quote",
+      entityId: link.quoteId,
+      metadata: { note },
+    });
     return { requested: true };
   }
 

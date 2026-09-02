@@ -141,6 +141,40 @@ breakpoint prefix as its container. Re-verified on both the request-detail
 page and the two admin forms that had this exact bug (`UsersPanel`'s invite
 form, `CrmInboxPage`'s new-enquiry form) before calling it fixed.
 
+## Admin support tooling
+
+The user's ask — "admin can do everything anywhere so when users have
+problems we can help them" — is implemented as scoped, audited support
+tools within an org, not a blanket permission bypass or cross-tenant "god
+mode." Nothing here reaches outside the admin's own organization; that
+would be a different (and much riskier) feature this brief never asked for.
+
+- **Password reset** (`POST /admin/users/:membershipId/reset-password`) —
+  the single most common real support request. Generates a fresh one-time
+  password with the same reveal-once UX as inviting a new person, so an
+  admin can unblock a locked-out teammate without a "forgot password"
+  email flow that doesn't exist yet (no SMTP integration configured by
+  default — see Integrations above).
+- **Audit log viewer** (`GET /admin/audit-log`, new "Audit Log" tab) — the
+  `audit_log` table already recorded everything, but nothing surfaced it.
+  An admin can now filter by entity type/ID and see exactly what happened
+  to a specific quote, request, or user when someone reports a problem,
+  instead of needing an engineer to query the database directly. This
+  required making `AuditLog.organizationId` a real (required) column
+  rather than something derived from `actorId` — a public proposal-token
+  action (accept/request-changes) has no actor at all, so scoping by actor
+  wouldn't have worked; every `AuditService.record()` call site across
+  CRM, quotes, integrations, and user management now passes it explicitly.
+- **Request owner reassignment** (`PATCH /crm/requests/:id/owner`) — an
+  admin can hand a stuck or orphaned enquiry to a different team member
+  (e.g. the original owner is unavailable) directly from the request page.
+
+All three are gated by the `ADMIN` role (owner reassignment, audit log) or
+`MANAGE_USERS` permission (password reset) server-side — confirmed a
+non-admin gets 403 on each — and every action still writes its own
+`audit_log` entry, including the admin's own password resets and
+reassignments. Admin visibility doesn't mean admin invisibility.
+
 ## Deliberately not built yet (with why)
 
 - **WhatsApp Business API channel** (§4.1/§5/Phase 1 scope item) — needs a

@@ -5,10 +5,11 @@ import { UsersService } from "./users.service";
 import { UsersController } from "./users.controller";
 import { DashboardService } from "./dashboard.service";
 import { DashboardController } from "./dashboard.controller";
+import { AuditLogController } from "./audit-log.controller";
 
 @Module({
   providers: [IntegrationsService, UsersService, DashboardService],
-  controllers: [IntegrationsController, UsersController, DashboardController],
+  controllers: [IntegrationsController, UsersController, DashboardController, AuditLogController],
   exports: [IntegrationsService],
 })
 export class AdminModule {}

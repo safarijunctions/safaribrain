@@ -80,4 +80,12 @@ Sign in as **admin** and open the "Admin" link in the header:
   (e.g. `APPROVE_QUOTE`, `MANAGE_INTEGRATIONS`) individually rather than an
   all-or-nothing Admin flag. A new person gets a one-time temporary
   password to share with them until an email/SMS integration is configured
-  to deliver invites automatically.
+  to deliver invites automatically. If someone gets locked out later,
+  **Reset password** on their row generates a fresh one.
+- **Audit Log** — filterable, paginated history of every consequential
+  action in the org (who approved a quote, who reassigned a request, who
+  added a payment credential) — the tool for tracing what happened when a
+  user reports a problem.
+
+Admins can also reassign a request's owner directly from its detail page
+(useful when the original owner is unavailable and a client is waiting).

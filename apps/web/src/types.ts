@@ -14,6 +14,7 @@ export interface EnquiryRequestSummary {
   contact: Contact;
   createdAt: string;
   quotes: { id: string; status: string }[];
+  owner?: { id: string; fullName: string } | null;
 }
 
 export interface PipelineEvent {
@@ -138,4 +139,21 @@ export interface OrgMember {
   permissions: string[];
   createdAt: string;
   user: { id: string; fullName: string; email: string; phone?: string; createdAt: string };
+}
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  actor: { id: string; fullName: string; email: string } | null;
+}
+
+export interface AuditLogPage {
+  rows: AuditLogEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
 }

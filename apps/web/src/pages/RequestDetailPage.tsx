@@ -2,17 +2,33 @@ import { useState } from "react";
 import { useParams } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { EnquiryRequestDetail, TourTemplateSummary, TourTemplateDetail, Quote } from "../types";
+import { useAuth } from "../lib/auth";
+import { EnquiryRequestDetail, TourTemplateSummary, TourTemplateDetail, Quote, OrgMember } from "../types";
 import { QuoteBuilder } from "../components/QuoteBuilder";
 import { QuoteCard } from "../components/QuoteCard";
 
 export function RequestDetailPage() {
   const { requestId } = useParams({ strict: false }) as { requestId: string };
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
   const { data: request, isLoading } = useQuery({
     queryKey: ["request", requestId],
     queryFn: () => api.get<EnquiryRequestDetail>(`/crm/requests/${requestId}`),
+  });
+
+  // Support tool: only admins see/use this — reassigning ownership is how
+  // an admin unsticks an enquiry when the original owner is unavailable.
+  const { data: teamMembers } = useQuery({
+    queryKey: ["org-members"],
+    queryFn: () => api.get<OrgMember[]>("/admin/users"),
+    enabled: isAdmin,
+  });
+
+  const setOwner = useMutation({
+    mutationFn: (ownerId: string | null) => api.patch(`/crm/requests/${requestId}/owner`, { ownerId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["request", requestId] }),
   });
 
   const { data: templates } = useQuery({
@@ -46,7 +62,7 @@ export function RequestDetailPage() {
           <p className="text-sm text-stone-500">
             {request.contact.email} {request.contact.whatsapp && `· WhatsApp ${request.contact.whatsapp}`}
           </p>
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-4 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-4 text-sm">
             <div>
               <p className="text-stone-400 text-xs">Party size</p>
               <p>{request.partySize}</p>
@@ -58,6 +74,26 @@ export function RequestDetailPage() {
             <div>
               <p className="text-stone-400 text-xs">Source</p>
               <p>{request.source}</p>
+            </div>
+            <div>
+              <p className="text-stone-400 text-xs">Owner</p>
+              {isAdmin ? (
+                <select
+                  className="border border-stone-300 rounded px-1.5 py-1 text-xs -ml-1.5"
+                  value={request.owner?.id ?? ""}
+                  onChange={(e) => setOwner.mutate(e.target.value || null)}
+                  disabled={setOwner.isPending}
+                >
+                  <option value="">Unassigned</option>
+                  {teamMembers?.map((m) => (
+                    <option key={m.user.id} value={m.user.id}>
+                      {m.user.fullName}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p>{request.owner?.fullName ?? "Unassigned"}</p>
+              )}
             </div>
           </div>
           {request.notes && <p className="text-sm mt-4 text-stone-700 italic">"{request.notes}"</p>}

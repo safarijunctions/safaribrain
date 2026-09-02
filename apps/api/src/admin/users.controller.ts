@@ -30,6 +30,11 @@ export class UsersController {
     return this.users.updateMembership(user.organizationId, user.sub, membershipId, dto);
   }
 
+  @Post(":membershipId/reset-password")
+  resetPassword(@CurrentUser() user: JwtPayload, @Param("membershipId") membershipId: string) {
+    return this.users.resetPassword(user.organizationId, user.sub, membershipId);
+  }
+
   @Delete(":membershipId")
   remove(@CurrentUser() user: JwtPayload, @Param("membershipId") membershipId: string) {
     return this.users.removeMembership(user.organizationId, user.sub, membershipId);

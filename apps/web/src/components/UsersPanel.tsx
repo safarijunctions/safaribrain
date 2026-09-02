@@ -31,6 +31,11 @@ export function UsersPanel() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["org-members"] }),
   });
 
+  const resetPassword = useMutation({
+    mutationFn: (membershipId: string) => api.post<{ email: string; tempPassword: string }>(`/admin/users/${membershipId}/reset-password`),
+    onSuccess: (res) => setTempPasswordNotice({ email: res.email, password: res.tempPassword }),
+  });
+
   const togglePermission = useMutation({
     mutationFn: ({ membershipId, permissions }: { membershipId: string; permissions: string[] }) =>
       api.patch(`/admin/users/${membershipId}`, { permissions }),
@@ -73,16 +78,26 @@ export function UsersPanel() {
       <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-clay-900/5 overflow-hidden">
         {data?.map((m) => (
           <div key={m.id} className="px-5 py-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <p className="font-medium text-sm">{m.user.fullName}</p>
                 <p className="text-xs text-stone-500">
                   {m.user.email} · {m.role}
                 </p>
               </div>
-              <button onClick={() => remove.mutate(m.id)} className="text-xs text-red-500 hover:underline">
-                Remove access
-              </button>
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={() => resetPassword.mutate(m.id)}
+                  disabled={resetPassword.isPending}
+                  className="text-xs text-clay-700 hover:underline disabled:opacity-50"
+                  title="Generate a new one-time password for this person — helps when they're locked out"
+                >
+                  Reset password
+                </button>
+                <button onClick={() => remove.mutate(m.id)} className="text-xs text-red-500 hover:underline">
+                  Remove access
+                </button>
+              </div>
             </div>
             <div className="flex flex-wrap gap-3 mt-2">
               {PERMISSIONS.map((p) => (

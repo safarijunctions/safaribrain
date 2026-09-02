@@ -430,17 +430,25 @@ model Integration {
 // Platform (§6) — audit log
 // ---------------------------------------------------------------------------
 
+// organizationId is required (not derived from actor, since a public
+// proposal-token action — accept/request-changes — has no actor at all) so
+// an admin can pull "everything that happened in my org" as one scoped
+// query when troubleshooting a user's report — §9 "every AI/consequential
+// action... retains... reviewer decision", extended here to give a human
+// admin the same visibility for support purposes.
 model AuditLog {
-  id         String   @id @default(cuid())
-  actorId    String?
-  action     String // e.g. "quote.approve", "quote.accept"
-  entityType String
-  entityId   String
-  metadata   Json?
-  createdAt  DateTime @default(now())
+  id             String   @id @default(cuid())
+  organizationId String
+  actorId        String?
+  action         String // e.g. "quote.approve", "quote.accept"
+  entityType     String
+  entityId       String
+  metadata       Json?
+  createdAt      DateTime @default(now())
 
   actor User? @relation(fields: [actorId], references: [id])
 
   @@index([entityType, entityId])
+  @@index([organizationId, createdAt])
   @@map("audit_log")
 }

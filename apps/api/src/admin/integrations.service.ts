@@ -57,6 +57,7 @@ export class IntegrationsService {
     // Never write secret values to the audit log — only that credentials
     // were touched and which non-secret keys changed.
     await this.audit.record({
+      organizationId,
       actorId,
       action: existing ? "integration.update" : "integration.create",
       entityType: "Integration",
@@ -70,14 +71,14 @@ export class IntegrationsService {
   async setEnabled(organizationId: string, actorId: string | undefined, id: string, enabled: boolean) {
     const row = await this.getOwned(organizationId, id);
     const updated = await this.prisma.integration.update({ where: { id: row.id }, data: { enabled } });
-    await this.audit.record({ actorId, action: "integration.toggle", entityType: "Integration", entityId: id, metadata: { enabled } });
+    await this.audit.record({ organizationId, actorId, action: "integration.toggle", entityType: "Integration", entityId: id, metadata: { enabled } });
     return toSafeIntegration(updated);
   }
 
   async remove(organizationId: string, actorId: string | undefined, id: string) {
     const row = await this.getOwned(organizationId, id);
     await this.prisma.integration.delete({ where: { id: row.id } });
-    await this.audit.record({ actorId, action: "integration.delete", entityType: "Integration", entityId: id, metadata: { provider: row.provider } });
+    await this.audit.record({ organizationId, actorId, action: "integration.delete", entityType: "Integration", entityId: id, metadata: { provider: row.provider } });
     return { deleted: true };
   }
 
