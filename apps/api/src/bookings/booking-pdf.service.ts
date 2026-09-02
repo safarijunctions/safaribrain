@@ -17,6 +17,8 @@ const RULE = "#e7d9cb";
 
 export interface BookingPdfTraveler {
   fullName: string;
+  dateOfBirth?: Date | string | null;
+  passportNumber?: string | null;
 }
 
 export interface BookingPdfPayment {
@@ -33,9 +35,16 @@ export interface BookingPdfInput {
   totalPrice: string | number;
   amountPaid: string | number;
   contactName: string;
+  contactWhatsapp?: string | null;
   travelers: BookingPdfTraveler[];
   payments: BookingPdfPayment[];
-  itinerary?: { title?: string | null; days: { dayNumber: number; title: string; place?: { name: string } | null }[] } | null;
+  itinerary?: {
+    title?: string | null;
+    days: { dayNumber: number; title: string; mealsIncluded?: string[]; place?: { name: string } | null }[];
+  } | null;
+  guideName?: string | null;
+  guidePhone?: string | null;
+  pickupNotes?: string | null;
 }
 
 @Injectable()
@@ -169,6 +178,88 @@ export class BookingPdfService {
       }
 
       doc.fontSize(8).fillColor(FAINT).text(`Ticket ${input.ticketToken}`, MARGIN, doc.page.height - 40);
+
+      doc.end();
+    });
+  }
+
+  // The guide/driver's day sheet (§7 Phase 2 "guide manifests") — the one
+  // document in this service that is deliberately NOT client-safe: it
+  // carries passport numbers and dates of birth, which national park gates
+  // require for entry logs. Staff-only, never linked from a public
+  // endpoint — see BookingsController vs BookingsPublicController.
+  async renderManifest(input: BookingPdfInput): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ size: "A4", margin: 0 });
+      const chunks: Buffer[] = [];
+      doc.on("data", (c) => chunks.push(c));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+
+      const MARGIN = 50;
+      const WIDTH = doc.page.width;
+
+      doc.rect(0, 0, WIDTH, 100).fill(ACACIA_700);
+      doc.rect(0, 100, WIDTH, 3).fill(SUNSET_300);
+      doc.fillColor(SUNSET_300).fontSize(9).text("SAFARI JUNCTION'S ADVENTURES — INTERNAL", MARGIN, 26, { characterSpacing: 1.5 });
+      doc.fillColor("#ffffff").fontSize(20).text("Guide manifest", MARGIN, 40);
+      doc.fillColor("#ffffff").opacity(0.85).fontSize(11).text(`${input.contactName} · Booking ${input.ticketToken.slice(0, 10)}…`, MARGIN, 68);
+      doc.opacity(1);
+
+      let y = 122;
+
+      doc.fontSize(13).fillColor(CLAY_700).text("Logistics", MARGIN, y);
+      y += 20;
+      doc.fontSize(10).fillColor(INK).text(`Guide/driver: ${input.guideName || "— not yet assigned —"}${input.guidePhone ? ` (${input.guidePhone})` : ""}`, MARGIN, y, { width: WIDTH - MARGIN * 2 });
+      y += 16;
+      doc.fillColor(INK).text(`Client contact: ${input.contactName}${input.contactWhatsapp ? ` · WhatsApp ${input.contactWhatsapp}` : ""}`, MARGIN, y, { width: WIDTH - MARGIN * 2 });
+      y += 16;
+      if (input.pickupNotes) {
+        doc.fillColor(INK).text(`Pickup: ${input.pickupNotes}`, MARGIN, y, { width: WIDTH - MARGIN * 2 });
+        y += doc.heightOfString(`Pickup: ${input.pickupNotes}`, { width: WIDTH - MARGIN * 2 }) + 4;
+      }
+
+      y += 8;
+      doc.moveTo(MARGIN, y).lineTo(WIDTH - MARGIN, y).strokeColor(RULE).lineWidth(1.5).stroke();
+      y += 16;
+
+      doc.fontSize(13).fillColor(CLAY_700).text(`Travelers (${input.travelers.length}) — for park entry logs`, MARGIN, y);
+      y += 20;
+      for (const t of input.travelers) {
+        const dob = t.dateOfBirth ? new Date(t.dateOfBirth).toLocaleDateString() : "—";
+        doc.fontSize(10).fillColor(INK).text(t.fullName, MARGIN, y, { width: 220 });
+        doc.fillColor(MUTED).text(`DOB ${dob}`, MARGIN + 220, y, { width: 110 });
+        doc.fillColor(MUTED).text(`Passport ${t.passportNumber || "—"}`, MARGIN + 330, y, { width: 165 });
+        y += 16;
+      }
+      if (input.travelers.length === 0) {
+        doc.fontSize(10).fillColor(FAINT).text("No travelers added yet.", MARGIN, y);
+        y += 16;
+      }
+
+      y += 8;
+      doc.moveTo(MARGIN, y).lineTo(WIDTH - MARGIN, y).strokeColor(RULE).lineWidth(1.5).stroke();
+      y += 16;
+
+      if (input.itinerary?.days.length) {
+        doc.fontSize(13).fillColor(CLAY_700).text("Day-by-day", MARGIN, y);
+        y += 20;
+        for (const d of input.itinerary.days) {
+          doc.fontSize(10).fillColor(INK).text(`Day ${d.dayNumber}: ${d.title}`, MARGIN, y, { width: WIDTH - MARGIN * 2 });
+          y += 14;
+          if (d.place) {
+            doc.fontSize(9).fillColor(ACACIA_700).text(d.place.name, MARGIN, y, { width: WIDTH - MARGIN * 2 });
+            y += 13;
+          }
+          if (d.mealsIncluded?.length) {
+            doc.fontSize(9).fillColor(MUTED).text(`Meals: ${d.mealsIncluded.join(", ")}`, MARGIN, y, { width: WIDTH - MARGIN * 2 });
+            y += 13;
+          }
+          y += 6;
+        }
+      }
+
+      doc.fontSize(8).fillColor(FAINT).text(`Booking ${input.ticketToken} · Internal document — do not share with the client`, MARGIN, doc.page.height - 40);
 
       doc.end();
     });

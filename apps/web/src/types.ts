@@ -196,6 +196,9 @@ export interface Booking {
   totalPrice: string;
   amountPaid: string;
   ticketToken: string;
+  guideName?: string | null;
+  guidePhone?: string | null;
+  pickupNotes?: string | null;
   travelers: Traveler[];
   payments: Payment[];
   termsSnapshot?: { itinerary: BookingItinerary; termsMarkdown?: string | null; frozenAt: string } | null;

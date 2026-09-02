@@ -80,6 +80,11 @@ the operator's request page, a new "Booking" panel appears:
    is linked from the panel too (`/booking/:token`), showing the itinerary,
    travelers, payment history, and balance due, with download buttons for
    both PDFs.
+10. **Assign a guide** — name, phone, and pickup notes (flight number,
+    meeting point, time). Then download the **Guide manifest PDF** — a
+    staff-only document (unlike the receipt/e-ticket, this one is never on
+    the public booking page) with every traveler's passport number and date
+    of birth for park-gate entry logs, plus the day-by-day itinerary.
 
 ## Admin Portal
 

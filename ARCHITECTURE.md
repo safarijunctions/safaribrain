@@ -174,6 +174,45 @@ payment gateway integration yet (see "Deliberately not built" below).
   org-scoped `/bookings` endpoint gets 401; an unknown token on any public
   booking endpoint gets 404 rather than leaking existence.
 
+### Guide manifests (trip delivery, continued)
+
+The other half of Phase 2's "Booking **and trip delivery**" title (§7): once
+a booking exists, staff need an operational day sheet for whoever is
+actually driving/guiding the trip — this is deliberately a different
+document from anything the client sees.
+
+- **Guide/pickup logistics on `Booking`**: `guideName`, `guidePhone`,
+  `pickupNotes` — plain text fields, not a `User` foreign key. Guides and
+  drivers in this business are frequently contracted, not platform account
+  holders, so modeling this as a relation to `User` would have been wrong
+  for the common case. Editable from the operator's `BookingPanel` via
+  `PATCH /bookings/:id/logistics`.
+- **Traveler passport/DOB capture, actually wired up**: `AddTravelerDto`
+  already supported `dateOfBirth`/`passportNumber` from the first Phase 2
+  slice, but the web form only ever collected `fullName` — a real gap, since
+  a manifest without passport numbers is useless for the park-gate entry
+  logs it exists for. The "Add traveler" form now has both fields
+  (optional, since not every trip needs them at booking time).
+- **`GET /bookings/:id/manifest.pdf`** (`BookingPdfService.renderManifest`)
+  — the one PDF in this system that is deliberately *not* client-safe: it
+  lists every traveler's passport number and date of birth, plus the
+  assigned guide's contact details and pickup notes. It lives only on
+  `BookingsController` (JWT-guarded, staff-only) and has no counterpart on
+  `BookingsPublicController` — confirmed by grep, not just by omission, and
+  by a live 401 on an unauthenticated request. The client-facing booking
+  status page and its public JSON endpoint were re-checked to confirm
+  neither field ever appears there.
+- Verified end-to-end in a real browser: assigned a guide with phone and
+  pickup notes, added a traveler with a passport number and date of birth,
+  confirmed both persist and render correctly in the panel on both desktop
+  and a 390px mobile viewport (the traveler form's `grid-cols-2
+  sm:grid-cols-4` collapses cleanly), downloaded the manifest PDF via a
+  fetch-as-blob flow (a plain `<a href>` can't carry the Bearer token this
+  endpoint requires — `api.getBlob` fetches with the auth header and opens
+  an object URL instead), and confirmed the public booking JSON for the
+  same booking still omits `guideName`/`guidePhone`/`pickupNotes` and every
+  traveler's `dateOfBirth`/`passportNumber`.
+
 ## Visual design
 
 The app now has an actual brand identity instead of default Tailwind gray/
@@ -261,11 +300,10 @@ reassignments. Admin visibility doesn't mean admin invisibility.
   the next Phase 2 slice, at the
   `IntegrationsService.getEnabledForCategory(orgId, "PAYMENT")` extension
   point.
-- **PWA offline support, guide manifests, SOS/medevac, vehicle compliance,
-  calendar/supplier confirmations** — all still-unbuilt pieces of Phase 2's
-  "Booking and trip delivery" scope per §7/§4.3. Booking-on-acceptance,
-  travelers, manual payments, and documents (this pass) come first because
-  a booking has to exist before any of these can attach to it.
+- **PWA offline support, SOS/medevac, vehicle compliance, calendar/supplier
+  confirmations** — still-unbuilt pieces of Phase 2's "Booking and trip
+  delivery" scope per §7/§4.3. Guide manifests are now built (see above);
+  these remaining items need a booking to already exist, which it now does.
 - **Marketplace, trade portal, automation (Phase 3-4), super-app (Phase 5)**
   — untouched, per the brief's own phase order. Nothing here should be
   built ahead of its phase.

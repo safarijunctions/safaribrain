@@ -18,10 +18,17 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
   const qc = useQueryClient();
   const [showTravelerForm, setShowTravelerForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [showLogisticsForm, setShowLogisticsForm] = useState(false);
   const [travelerName, setTravelerName] = useState("");
+  const [travelerDob, setTravelerDob] = useState("");
+  const [travelerPassport, setTravelerPassport] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<string>("BANK_TRANSFER");
   const [paymentReference, setPaymentReference] = useState("");
+  const [guideName, setGuideName] = useState(booking.guideName ?? "");
+  const [guidePhone, setGuidePhone] = useState(booking.guidePhone ?? "");
+  const [pickupNotes, setPickupNotes] = useState(booking.pickupNotes ?? "");
+  const [manifestError, setManifestError] = useState<string | null>(null);
 
   function invalidate() {
     qc.invalidateQueries();
@@ -29,13 +36,38 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
   }
 
   const addTraveler = useMutation({
-    mutationFn: () => api.post(`/bookings/${booking.id}/travelers`, { fullName: travelerName }),
+    mutationFn: () =>
+      api.post(`/bookings/${booking.id}/travelers`, {
+        fullName: travelerName,
+        dateOfBirth: travelerDob || undefined,
+        passportNumber: travelerPassport || undefined,
+      }),
     onSuccess: () => {
       setTravelerName("");
+      setTravelerDob("");
+      setTravelerPassport("");
       setShowTravelerForm(false);
       invalidate();
     },
   });
+
+  const updateLogistics = useMutation({
+    mutationFn: () => api.patch(`/bookings/${booking.id}/logistics`, { guideName, guidePhone, pickupNotes }),
+    onSuccess: () => {
+      setShowLogisticsForm(false);
+      invalidate();
+    },
+  });
+
+  async function downloadManifest() {
+    setManifestError(null);
+    try {
+      const blob = await api.getBlob(`/bookings/${booking.id}/manifest.pdf`);
+      window.open(URL.createObjectURL(blob), "_blank");
+    } catch {
+      setManifestError("Couldn't load the manifest — try again.");
+    }
+  }
 
   const recordPayment = useMutation({
     mutationFn: () =>
@@ -80,23 +112,86 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
             + Add traveler
           </button>
         ) : (
-          <div className="flex gap-2 mt-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
             <input
-              className="flex-1 border border-stone-300 rounded px-2 py-1.5 text-xs"
+              className="sm:col-span-2 border border-stone-300 rounded px-2 py-1.5"
               placeholder="Full name"
               value={travelerName}
               onChange={(e) => setTravelerName(e.target.value)}
             />
-            <button
-              onClick={() => addTraveler.mutate()}
-              disabled={!travelerName || addTraveler.isPending}
-              className="text-xs font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
-            >
-              Add
+            <input
+              type="date"
+              className="border border-stone-300 rounded px-2 py-1.5"
+              placeholder="Date of birth"
+              value={travelerDob}
+              onChange={(e) => setTravelerDob(e.target.value)}
+            />
+            <input
+              className="border border-stone-300 rounded px-2 py-1.5"
+              placeholder="Passport #"
+              value={travelerPassport}
+              onChange={(e) => setTravelerPassport(e.target.value)}
+            />
+            <div className="col-span-2 sm:col-span-4 flex gap-1.5">
+              <button
+                onClick={() => addTraveler.mutate()}
+                disabled={!travelerName || addTraveler.isPending}
+                className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+              >
+                Add
+              </button>
+              <button onClick={() => setShowTravelerForm(false)} className="border border-stone-300 rounded px-3 py-1.5">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Guide/pickup logistics — internal only, feeds the guide manifest */}
+      <div>
+        <p className="text-xs font-medium text-stone-500 mb-1.5">Guide & pickup logistics</p>
+        {!showLogisticsForm ? (
+          <div className="text-sm space-y-0.5">
+            <p>{booking.guideName ? `${booking.guideName}${booking.guidePhone ? ` (${booking.guidePhone})` : ""}` : <span className="text-stone-400">No guide assigned yet.</span>}</p>
+            {booking.pickupNotes && <p className="text-xs text-stone-500">{booking.pickupNotes}</p>}
+            <button onClick={() => setShowLogisticsForm(true)} className="text-xs text-clay-700 hover:underline mt-1">
+              {booking.guideName ? "Edit" : "+ Assign guide"}
             </button>
-            <button onClick={() => setShowTravelerForm(false)} className="text-xs border border-stone-300 rounded px-3 py-1.5">
-              Cancel
-            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1 text-xs">
+            <input
+              className="border border-stone-300 rounded px-2 py-1.5"
+              placeholder="Guide/driver name"
+              value={guideName}
+              onChange={(e) => setGuideName(e.target.value)}
+            />
+            <input
+              className="border border-stone-300 rounded px-2 py-1.5"
+              placeholder="Guide phone"
+              value={guidePhone}
+              onChange={(e) => setGuidePhone(e.target.value)}
+            />
+            <textarea
+              className="sm:col-span-2 border border-stone-300 rounded px-2 py-1.5"
+              placeholder="Pickup notes (location, flight number, time…)"
+              rows={2}
+              value={pickupNotes}
+              onChange={(e) => setPickupNotes(e.target.value)}
+            />
+            <div className="sm:col-span-2 flex gap-1.5">
+              <button
+                onClick={() => updateLogistics.mutate()}
+                disabled={updateLogistics.isPending}
+                className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+              >
+                Save
+              </button>
+              <button onClick={() => setShowLogisticsForm(false)} className="border border-stone-300 rounded px-3 py-1.5">
+                Cancel
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -161,7 +256,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
       </div>
 
       {/* Documents */}
-      <div className="flex flex-wrap gap-3 text-xs border-t border-stone-100 pt-3">
+      <div className="flex flex-wrap items-center gap-3 text-xs border-t border-stone-100 pt-3">
         <a href={`/api/bookings/public/${booking.ticketToken}/receipt.pdf`} target="_blank" rel="noreferrer" className="text-clay-700 underline">
           Receipt PDF
         </a>
@@ -170,10 +265,14 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
             E-ticket PDF
           </a>
         )}
+        <button onClick={downloadManifest} className="text-clay-700 underline" title="Internal only — includes passport numbers, never shown to the client">
+          Guide manifest PDF
+        </button>
         <a href={statusUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline break-all">
           {statusUrl}
         </a>
       </div>
+      {manifestError && <p className="text-xs text-red-600">{manifestError}</p>}
     </div>
   );
 }

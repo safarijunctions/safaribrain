@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { AddTravelerDto } from "./dto/add-traveler.dto";
 import { RecordPaymentDto } from "./dto/record-payment.dto";
+import { UpdateLogisticsDto } from "./dto/update-logistics.dto";
 
 const INCLUDE = {
   termsSnapshot: true,
@@ -104,6 +105,19 @@ export class BookingsService {
       metadata: { paymentId: payment.id, amount: dto.amount, method: dto.method, newStatus: nextStatus },
     });
 
+    return updated;
+  }
+
+  // Guide/pickup logistics for the day-of-trip manifest (§7 Phase 2
+  // "guide manifests") — operator-entered, staff-visible only.
+  async updateLogistics(organizationId: string, actorId: string | undefined, bookingId: string, dto: UpdateLogisticsDto) {
+    const booking = await this.getOwned(organizationId, bookingId);
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: { guideName: dto.guideName, guidePhone: dto.guidePhone, pickupNotes: dto.pickupNotes },
+      include: INCLUDE,
+    });
+    await this.audit.record({ organizationId, actorId, action: "booking.update_logistics", entityType: "Booking", entityId: booking.id, metadata: dto as Record<string, unknown> });
     return updated;
   }
 }

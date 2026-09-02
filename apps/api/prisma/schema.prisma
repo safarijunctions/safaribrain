@@ -430,6 +430,12 @@ model Booking {
   // The e-ticket/QR and the public trip-status page both key off this
   // token rather than the booking's own id, same pattern as ProposalLink.
   ticketToken    String        @unique @default(cuid())
+  // Trip-delivery logistics (§7 Phase 2 "guide manifests") — plain text, not
+  // a User FK: guides/drivers are frequently contracted, not platform
+  // account holders. Staff-only; never exposed on the public booking page.
+  guideName      String?
+  guidePhone     String?
+  pickupNotes    String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
