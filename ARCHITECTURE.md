@@ -108,6 +108,72 @@ real browser session against the web app.
   which matters given §5's low-bandwidth/data-cost principle. Linked from
   both the public proposal page and the operator's quote card.
 
+## What's built (Phase 2 — Booking and trip delivery, first slice)
+
+Per §7's phase order, this is the first Phase 2 slice: a booking is created
+the moment a client accepts a proposal, and staff can then manage travelers,
+record manual payments, and hand the client a status page and PDFs — no
+payment gateway integration yet (see "Deliberately not built" below).
+
+- **Schema** (`apps/api/prisma/schema.prisma`): `Booking` (status, currency,
+  totalPrice, amountPaid, a public `ticketToken`), `BookingTermsSnapshot`
+  (write-once, same pattern as `PriceSnapshot` — see "Non-negotiables"),
+  `Traveler`, and `Payment` (amount, method, optional reference, who
+  recorded it).
+- **Booking is created automatically on acceptance, nowhere else.**
+  `QuotesService.accept()` — inside the same `$transaction` that already
+  writes the `PriceSnapshot` — now also creates the `Booking` with a nested
+  `BookingTermsSnapshot` whose `itinerary` JSON is frozen from the quote's
+  pinned template version (days, meals, places) at that exact moment. Later
+  edits to the `TourTemplate` cannot change what an already-booked client
+  sees, for the same reason the price snapshot is immutable.
+- **`BookingsService`** (`apps/api/src/bookings/`) — everything *after* a
+  booking exists: add a traveler, record a payment. Status is a pure
+  function of `amountPaid` vs `totalPrice`: `PENDING → CONFIRMED` (first
+  payment) `→ PAID` (fully paid); `ACTIVE`/`COMPLETED`/`CANCELLED` are
+  trip-lifecycle states this pass deliberately doesn't touch. Recording a
+  payment is itself a consequential, audited action (§1.3) — a payment only
+  ever enters the system because a human typed it in, never automatically;
+  every call writes to `audit_log`.
+- **Payment methods, this pass**: bank transfer, cash, manual mobile money
+  — the brief's own §4.3 lists "manual bank transfer with proof upload" as
+  first-class, not a fallback. No gateway SDK call (Stripe charge, M-Pesa
+  STK push) is wired yet; that's the real Phase 2 work the
+  `IntegrationsService.getEnabledForCategory(orgId, "PAYMENT")` extension
+  point (added in Phase 1) exists for.
+- **Invoice/receipt and e-ticket PDFs** (`BookingPdfService`, same `pdfkit`
+  approach and hand-matched brand colors as the proposal PDF, for the same
+  low-bandwidth reasoning — §5): a receipt PDF is always available; the
+  e-ticket — which embeds a QR code (`qrcode` npm package) linking to the
+  public booking-status page — is only issued once the booking is fully
+  paid (`BadRequestException` otherwise), enforced server-side in
+  `BookingsPublicController`, not just hidden in the UI.
+- **Public, tokenized booking pages** (`BookingsPublicController`, no auth
+  guard — same reasoning as the proposal link: a traveler opens it directly
+  from WhatsApp/email/the PDF's QR code, no account needed): `GET
+  /bookings/public/:token` returns a client-safe view that strips internal
+  detail the way `clientSafeBreakdown` already does for proposals —
+  payment `reference` and `recordedBy` stay internal, only
+  amount/method/date reach the client. `apps/web/src/pages/
+  BookingStatusPage.tsx` renders it in the same visual language as
+  `ProposalPage.tsx` (gradient header, itinerary, payment table, balance
+  due, receipt/e-ticket download buttons), reachable at `/booking/$token`.
+- **Operator `BookingPanel`** (`apps/web/src/components/BookingPanel.tsx`),
+  wired into `RequestDetailPage.tsx` once a booking exists: status badge,
+  balance-due hint, inline add-traveler and record-payment forms, the
+  payment ledger, and links to both PDFs plus the client-facing status URL.
+- Verified end-to-end in a real browser session, not just by inspection:
+  draft a quote → submit for approval → a manager (not the drafting
+  operator, per §3 dual control) approves → operator sends → client accepts
+  the public proposal → booking appears on the request page as `PENDING` →
+  add a traveler → record a partial payment (status → `CONFIRMED`) → record
+  the remaining balance (status → `PAID`, e-ticket link appears) → both
+  PDFs download correctly → the public `/booking/:token` page renders
+  correctly on both desktop and a 390px mobile viewport. Confirmed
+  server-side permission boundaries: an unauthenticated request to the
+  org-scoped `/bookings` endpoint gets 401; an unknown token on any public
+  booking endpoint gets 404 rather than leaking existence.
+
 ## Visual design
 
 The app now has an actual brand identity instead of default Tailwind gray/
@@ -188,9 +254,21 @@ reassignments. Admin visibility doesn't mean admin invisibility.
   deferred until the official TANAPA/TALA/NCAA data-sharing relationship is
   pursued, per the brief's own instruction to treat that as the primary
   source and scraping as fallback.
-- **Booking, payments, guide manifests, SOS, marketplace, trade portal** —
-  all explicitly Phase 2+ in §7. Nothing here should be built ahead of its
-  phase.
+- **Payment gateway integration** — bookings currently take manual
+  bank-transfer/cash/mobile-money payments recorded by staff (§4.3, a
+  first-class method, not a stopgap). A real Stripe charge or M-Pesa STK
+  push against the credentials an admin already stores via Integrations is
+  the next Phase 2 slice, at the
+  `IntegrationsService.getEnabledForCategory(orgId, "PAYMENT")` extension
+  point.
+- **PWA offline support, guide manifests, SOS/medevac, vehicle compliance,
+  calendar/supplier confirmations** — all still-unbuilt pieces of Phase 2's
+  "Booking and trip delivery" scope per §7/§4.3. Booking-on-acceptance,
+  travelers, manual payments, and documents (this pass) come first because
+  a booking has to exist before any of these can attach to it.
+- **Marketplace, trade portal, automation (Phase 3-4), super-app (Phase 5)**
+  — untouched, per the brief's own phase order. Nothing here should be
+  built ahead of its phase.
 - **AI itinerary builder / any LLM call** (§4.4, §9) — no LLM provider has
   been chosen yet (see open decisions below), and §9 requires every
   AI-drafted price/content change to carry model/prompt version, sources,
@@ -241,9 +319,9 @@ Per §11's instruction to ask before locking in irreversible choices:
 
 ## Non-negotiables carried forward (don't relax these later)
 
-- `PriceSnapshot` and (once Phase 2 adds it) `BookingTermsSnapshot` are
-  write-once. No migration, admin tool, or "quick fix" should ever add an
-  UPDATE/DELETE path to either.
+- `PriceSnapshot` and `BookingTermsSnapshot` are write-once. No migration,
+  admin tool, or "quick fix" should ever add an UPDATE/DELETE path to
+  either.
 - No AI action may silently alter a confirmed price, published content, a
   confirmed booking, or safety-critical information (§9) — every future AI
   feature needs a human-approval step before it lands, not after.

@@ -51,6 +51,7 @@ model Organization {
   requests      EnquiryRequest[]
   places        Place[]
   integrations  Integration[]
+  bookings      Booking[]
 
   @@map("organizations")
 }
@@ -69,6 +70,7 @@ model User {
   quoteApprovals  Approval[]
   auditLogEntries AuditLog[]
   tasks           Task[]
+  recordedPayments Payment[]
 
   @@map("users")
 }
@@ -158,6 +160,7 @@ model EnquiryRequest {
   quotes       Quote[]
   tasks        Task[]
   pipelineLog  PipelineEvent[]
+  bookings     Booking[]
 
   @@index([organizationId, stage])
   @@map("enquiry_requests")
@@ -343,6 +346,7 @@ model Quote {
   approvals    Approval[]
   priceSnapshot PriceSnapshot?
   proposalLink ProposalLink?
+  booking      Booking?
 
   @@map("quotes")
 }
@@ -392,6 +396,102 @@ model ProposalLink {
   quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
 
   @@map("proposal_links")
+}
+
+// ---------------------------------------------------------------------------
+// Booking (§6, §4.2, §4.3, §7 Phase 2) — deliberately minimal: a booking is
+// created the moment a quote is accepted, alongside its PriceSnapshot.
+// Payments here are staff-recorded (bank transfer/cash/manual mobile money)
+// rather than gateway-integrated — no payment provider has been chosen yet
+// (§11 open decision), and an admin can add real gateway credentials via
+// Integrations (§4.9) whenever that's resolved. When that happens, an
+// automated payment_intents/webhook flow writes into this same Payment
+// table rather than needing a redesign.
+// ---------------------------------------------------------------------------
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  PAID
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Booking {
+  id             String        @id @default(cuid())
+  organizationId String
+  requestId      String
+  quoteId        String        @unique
+  status         BookingStatus @default(PENDING)
+  currency       String
+  totalPrice     Decimal       @db.Decimal(12, 2)
+  amountPaid     Decimal       @db.Decimal(12, 2) @default(0)
+  // The e-ticket/QR and the public trip-status page both key off this
+  // token rather than the booking's own id, same pattern as ProposalLink.
+  ticketToken    String        @unique @default(cuid())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request       EnquiryRequest        @relation(fields: [requestId], references: [id])
+  quote         Quote                 @relation(fields: [quoteId], references: [id])
+  termsSnapshot BookingTermsSnapshot?
+  travelers     Traveler[]
+  payments      Payment[]
+
+  @@map("bookings")
+}
+
+// Write-once — same discipline as PriceSnapshot (§1.8, §6). Frozen at the
+// instant the booking is created so a later edit to the source
+// TourTemplate/TemplateVersion can never change what a confirmed
+// traveler's itinerary/terms show.
+model BookingTermsSnapshot {
+  id            String   @id @default(cuid())
+  bookingId     String   @unique
+  itinerary     Json // { title, durationDays, days: [...] } snapshot of the accepted template version
+  termsMarkdown String?
+  frozenAt      DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("booking_terms_snapshots")
+}
+
+model Traveler {
+  id             String    @id @default(cuid())
+  bookingId      String
+  fullName       String
+  dateOfBirth    DateTime?
+  passportNumber String?
+  createdAt      DateTime  @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("travelers")
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  MOBILE_MONEY_MANUAL
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  bookingId    String
+  amount       Decimal       @db.Decimal(12, 2)
+  currency     String
+  method       PaymentMethod
+  reference    String? // bank transfer reference, receipt number, etc.
+  recordedById String?
+  createdAt    DateTime      @default(now())
+
+  booking    Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  recordedBy User?   @relation(fields: [recordedById], references: [id])
+
+  @@map("payments")
 }
 
 // ---------------------------------------------------------------------------

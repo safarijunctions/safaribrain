@@ -195,6 +195,15 @@ export class QuotesService {
           include: {
             versions: { orderBy: { versionNo: "desc" }, take: 1 },
             request: { select: { organizationId: true } },
+            tourTemplate: {
+              include: {
+                versions: {
+                  orderBy: { versionNumber: "desc" },
+                  take: 1,
+                  include: { days: { include: { place: true }, orderBy: { dayNumber: "asc" } } },
+                },
+              },
+            },
           },
         },
       },
@@ -203,9 +212,14 @@ export class QuotesService {
     if (link.quote.status !== QuoteStatus.SENT) throw new BadRequestException(`Cannot accept a quote in status ${link.quote.status}`);
 
     const latestVersion = link.quote.versions[0];
+    const templateVersion = link.quote.tourTemplate?.versions[0];
 
     // Write-once freeze — §1.8, §6. This snapshot is what every downstream
-    // system (booking, finance, guide manifest) must read from now on.
+    // system (booking, finance, guide manifest) must read from now on. A
+    // Booking (with its own immutable BookingTermsSnapshot — same
+    // discipline as PriceSnapshot) is created in the same transaction, so
+    // acceptance always yields exactly one booking, never a dangling
+    // ACCEPTED quote with nothing behind it.
     await this.prisma.$transaction([
       this.prisma.priceSnapshot.create({
         data: {
@@ -220,6 +234,31 @@ export class QuotesService {
       this.prisma.enquiryRequest.update({
         where: { id: link.quote.requestId },
         data: { stage: RequestStage.BOOKED, pipelineLog: { create: [{ stage: RequestStage.BOOKED, note: "Client accepted proposal" }] } },
+      }),
+      this.prisma.booking.create({
+        data: {
+          organizationId: link.quote.request.organizationId,
+          requestId: link.quote.requestId,
+          quoteId: link.quoteId,
+          currency: link.quote.currency,
+          totalPrice: latestVersion.totalPrice,
+          termsSnapshot: {
+            create: {
+              itinerary: {
+                title: link.quote.tourTemplate?.title ?? null,
+                durationDays: link.quote.tourTemplate?.durationDays ?? null,
+                days: templateVersion?.days.map((d) => ({
+                  dayNumber: d.dayNumber,
+                  title: d.title,
+                  description: d.description,
+                  mealsIncluded: d.mealsIncluded,
+                  place: d.place ? { name: d.place.name } : null,
+                })) ?? [],
+              } as any,
+              termsMarkdown: templateVersion?.termsMarkdown ?? null,
+            },
+          },
+        },
       }),
     ]);
 

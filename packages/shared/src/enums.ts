@@ -94,6 +94,17 @@ export enum BookingStatus {
   CANCELLED = "CANCELLED",
 }
 
+// Staff-recorded methods only — no payment gateway has been chosen yet
+// (§11 open decision). Once an admin adds a real gateway credential via
+// Integrations (§4.9), gateway-originated payments write into the same
+// Payment table with their own method values; this list isn't meant to be
+// exhaustive of every future rail.
+export enum PaymentMethod {
+  BANK_TRANSFER = "BANK_TRANSFER",
+  CASH = "CASH",
+  MOBILE_MONEY_MANUAL = "MOBILE_MONEY_MANUAL",
+}
+
 export enum FeeChangeStatus {
   DETECTED = "DETECTED",
   PENDING_APPROVAL = "PENDING_APPROVAL",

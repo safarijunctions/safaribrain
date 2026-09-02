@@ -157,3 +157,59 @@ export interface AuditLogPage {
   page: number;
   pageSize: number;
 }
+
+export interface Traveler {
+  id: string;
+  fullName: string;
+  dateOfBirth?: string;
+  passportNumber?: string;
+}
+
+export interface Payment {
+  id: string;
+  amount: string;
+  currency: string;
+  method: string;
+  reference?: string | null;
+  createdAt: string;
+  recordedBy?: { id: string; fullName: string } | null;
+}
+
+export interface BookingItineraryDay {
+  dayNumber: number;
+  title: string;
+  description?: string | null;
+  mealsIncluded: string[];
+  place?: { name: string } | null;
+}
+
+export interface BookingItinerary {
+  title?: string | null;
+  durationDays?: number | null;
+  days: BookingItineraryDay[];
+}
+
+export interface Booking {
+  id: string;
+  status: string;
+  currency: string;
+  totalPrice: string;
+  amountPaid: string;
+  ticketToken: string;
+  travelers: Traveler[];
+  payments: Payment[];
+  termsSnapshot?: { itinerary: BookingItinerary; termsMarkdown?: string | null; frozenAt: string } | null;
+}
+
+export interface PublicBooking {
+  status: string;
+  currency: string;
+  totalPrice: string;
+  amountPaid: string;
+  balanceDue: number;
+  contactName: string;
+  travelers: { fullName: string }[];
+  payments: { amount: string; method: string; createdAt: string }[];
+  itinerary: BookingItinerary | null;
+  termsMarkdown?: string | null;
+}

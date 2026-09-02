@@ -3,9 +3,10 @@ import { useParams } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { EnquiryRequestDetail, TourTemplateSummary, TourTemplateDetail, Quote, OrgMember } from "../types";
+import { EnquiryRequestDetail, TourTemplateSummary, TourTemplateDetail, Quote, OrgMember, Booking } from "../types";
 import { QuoteBuilder } from "../components/QuoteBuilder";
 import { QuoteCard } from "../components/QuoteCard";
+import { BookingPanel } from "../components/BookingPanel";
 
 export function RequestDetailPage() {
   const { requestId } = useParams({ strict: false }) as { requestId: string };
@@ -31,6 +32,11 @@ export function RequestDetailPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["request", requestId] }),
   });
 
+  const { data: booking } = useQuery({
+    queryKey: ["booking", requestId],
+    queryFn: () => api.get<Booking | null>(`/bookings?requestId=${requestId}`),
+  });
+
   const { data: templates } = useQuery({
     queryKey: ["templates"],
     queryFn: () => api.get<TourTemplateSummary[]>("/products/tour-templates"),
@@ -47,6 +53,7 @@ export function RequestDetailPage() {
 
   function invalidate() {
     qc.invalidateQueries({ queryKey: ["request", requestId] });
+    qc.invalidateQueries({ queryKey: ["booking", requestId] });
   }
 
   if (isLoading || !request) return <p className="p-8 text-sm text-stone-500">Loading…</p>;
@@ -150,6 +157,13 @@ export function RequestDetailPage() {
             </div>
           )}
         </section>
+
+        {booking && (
+          <section className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm shadow-clay-900/5">
+            <h2 className="font-display font-semibold text-clay-800 mb-3">Booking</h2>
+            <BookingPanel booking={booking} onChanged={invalidate} />
+          </section>
+        )}
       </div>
 
       <div className="space-y-6">

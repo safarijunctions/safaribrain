@@ -3,6 +3,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { CrmInboxPage } from "./pages/CrmInboxPage";
 import { RequestDetailPage } from "./pages/RequestDetailPage";
 import { ProposalPage } from "./pages/ProposalPage";
+import { BookingStatusPage } from "./pages/BookingStatusPage";
 import { AdminPage } from "./pages/AdminPage";
 import { isAuthenticated } from "./lib/auth";
 import { AppShell } from "./components/AppShell";
@@ -58,11 +59,20 @@ const proposalRoute = createRoute({
   component: ProposalPage,
 });
 
+// Public — no auth, same reasoning as proposalRoute: a traveler opens their
+// booking status/e-ticket link directly (WhatsApp, email, PDF QR code).
+const bookingStatusRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/booking/$token",
+  component: BookingStatusPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   appLayoutRoute.addChildren([crmInboxRoute, requestDetailRoute, adminRoute]),
   proposalRoute,
+  bookingStatusRoute,
 ]);
 
 export const router = createRouter({ routeTree });

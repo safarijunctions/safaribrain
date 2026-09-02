@@ -64,6 +64,23 @@ enquiry can be walked through a clickable prototype with no ambiguity"* and
 *"enquiry → priced, approved quote → sent proposal → acceptance, fully
 audited."*
 
+### Phase 2 — booking, continued from step 5 above
+
+Accepting the proposal auto-creates a `Booking` (no separate step). Back in
+the operator's request page, a new "Booking" panel appears:
+
+7. **Add a traveler** — full name (date of birth/passport optional).
+8. **Record a payment** — amount, method (bank transfer / cash / manual
+   mobile money), optional reference. The first payment moves the booking
+   from `PENDING` to `CONFIRMED`; paying the remaining balance moves it to
+   `PAID`, at which point an "E-ticket PDF" link appears (issuing it earlier
+   is rejected server-side, not just hidden).
+9. **Receipt PDF** is available at any time; the client's own tokenized
+   status page — reachable without logging in, same as the proposal link —
+   is linked from the panel too (`/booking/:token`), showing the itinerary,
+   travelers, payment history, and balance due, with download buttons for
+   both PDFs.
+
 ## Admin Portal
 
 Sign in as **admin** and open the "Admin" link in the header:
