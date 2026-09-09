@@ -132,6 +132,21 @@ simultaneous hold requests for one seat, exactly one wins.
     with a clear "you're offline" banner and the PDF download buttons
     grayed out — payments and reviews always require a real connection.
 
+### Fleet compliance and supplier confirmations
+
+18. As **admin**, open **Admin → Fleet** and add a vehicle with an
+    insurance or inspection expiry date within the next 30 days — it shows
+    an "Expiring soon" badge (past the date, "Expired"); leave both dates
+    blank and it shows "Not tracked" instead.
+19. Back in the operator's `BookingPanel` for any booking, open "Guide,
+    vehicle & pickup logistics" and assign that vehicle alongside a guide —
+    the compliance badge follows it there too, and the vehicle now appears
+    on the downloaded guide manifest PDF.
+20. In the same panel, add a "Supplier confirmation" (e.g. a lodge or park
+    permit) with a needed-by date — it starts `PENDING`. Confirm it with a
+    reference number or decline it; either way the status updates
+    immediately, independent of whether the booking itself is paid.
+
 ## Admin Portal
 
 Sign in as **admin** and open the "Admin" link in the header:
@@ -147,6 +162,9 @@ Sign in as **admin** and open the "Admin" link in the header:
 - **Reviews** — moderate post-trip reviews: publish or reject each pending
   submission, and optionally reply — the reply is shown publicly alongside
   the review on the booking status page and the marketplace listing.
+- **Fleet** — add and edit vehicles (registration, seats, insurance/
+  inspection expiry); a vehicle whose compliance is expiring soon or has
+  lapsed is flagged here and wherever it's assigned to a booking.
 - **AI Drafts** — describe a trip in plain language and an AI drafts a
   day-by-day itinerary you can edit before approving it into a real tour
   template. Requires an `LLM_PROVIDER` integration below; nothing is

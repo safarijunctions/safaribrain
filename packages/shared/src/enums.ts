@@ -30,6 +30,10 @@ export enum Permission {
   // separate from PUBLISH_FEE, which gates the financial fee-rule values
   // attached to a place, per §3's principle of scoping by consequence.
   MANAGE_CONTENT = "MANAGE_CONTENT",
+  // Adding/editing fleet vehicles and their insurance/inspection compliance
+  // — safety-critical (§3), kept separate from MANAGE_CONTENT/ADMIN so it
+  // can be granted to whoever actually manages the vehicles.
+  MANAGE_FLEET = "MANAGE_FLEET",
 }
 
 // Providers an admin can configure from the Admin Portal after launch,
@@ -105,6 +109,24 @@ export enum ReviewStatus {
   PENDING = "PENDING",
   PUBLISHED = "PUBLISHED",
   REJECTED = "REJECTED",
+}
+
+// §4.3 "vehicle compliance" — a vehicle that's RETIRED (or whose insurance/
+// inspection has lapsed, computed from its expiry dates, not stored as a
+// status) shouldn't be assignable to a trip.
+export enum VehicleStatus {
+  ACTIVE = "ACTIVE",
+  MAINTENANCE = "MAINTENANCE",
+  RETIRED = "RETIRED",
+}
+
+// §4.3 "calendar/supplier confirmations" — a per-booking checklist item for
+// a lodge/permit/transport an operator needs a yes from before a trip is
+// ready, independent of the booking's own payment status.
+export enum SupplierConfirmationStatus {
+  PENDING = "PENDING",
+  CONFIRMED = "CONFIRMED",
+  DECLINED = "DECLINED",
 }
 
 // Staff-recorded methods only — no payment gateway has been chosen yet

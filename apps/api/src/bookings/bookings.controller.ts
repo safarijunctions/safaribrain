@@ -8,6 +8,8 @@ import { BookingPdfService, BookingPdfInput } from "./booking-pdf.service";
 import { AddTravelerDto } from "./dto/add-traveler.dto";
 import { RecordPaymentDto } from "./dto/record-payment.dto";
 import { UpdateLogisticsDto } from "./dto/update-logistics.dto";
+import { AddSupplierConfirmationDto } from "./dto/add-supplier-confirmation.dto";
+import { UpdateSupplierConfirmationDto } from "./dto/update-supplier-confirmation.dto";
 
 @Controller("bookings")
 @UseGuards(JwtAuthGuard)
@@ -42,6 +44,21 @@ export class BookingsController {
     return this.bookings.markCompleted(user.organizationId, user.sub, id);
   }
 
+  @Post(":id/supplier-confirmations")
+  addSupplierConfirmation(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: AddSupplierConfirmationDto) {
+    return this.bookings.addSupplierConfirmation(user.organizationId, user.sub, id, dto);
+  }
+
+  @Patch(":id/supplier-confirmations/:confirmationId")
+  updateSupplierConfirmation(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Param("confirmationId") confirmationId: string,
+    @Body() dto: UpdateSupplierConfirmationDto,
+  ) {
+    return this.bookings.updateSupplierConfirmation(user.organizationId, user.sub, id, confirmationId, dto);
+  }
+
   // Staff-only, deliberately not on BookingsPublicController — carries
   // passport numbers and dates of birth for park-entry logs, which the
   // client-facing side never sees.
@@ -69,5 +86,6 @@ function toManifestPdfInput(b: any): BookingPdfInput {
     guideName: b.guideName,
     guidePhone: b.guidePhone,
     pickupNotes: b.pickupNotes,
+    vehicle: b.vehicle ? { name: b.vehicle.name, registrationNumber: b.vehicle.registrationNumber } : null,
   };
 }

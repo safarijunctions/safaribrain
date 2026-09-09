@@ -274,6 +274,29 @@ export interface BookingItinerary {
   days: BookingItineraryDay[];
 }
 
+export interface Vehicle {
+  id: string;
+  name: string;
+  registrationNumber: string;
+  capacity: number;
+  status: "ACTIVE" | "MAINTENANCE" | "RETIRED";
+  insuranceExpiry?: string | null;
+  inspectionExpiry?: string | null;
+  notes?: string | null;
+  complianceStatus: "OK" | "EXPIRING_SOON" | "EXPIRED" | "NOT_TRACKED";
+}
+
+export interface SupplierConfirmation {
+  id: string;
+  supplierName: string;
+  supplierType?: string | null;
+  status: "PENDING" | "CONFIRMED" | "DECLINED";
+  referenceCode?: string | null;
+  neededBy?: string | null;
+  confirmedAt?: string | null;
+  notes?: string | null;
+}
+
 export interface Booking {
   id: string;
   status: string;
@@ -284,10 +307,13 @@ export interface Booking {
   guideName?: string | null;
   guidePhone?: string | null;
   pickupNotes?: string | null;
+  vehicleId?: string | null;
+  vehicle?: Vehicle | null;
   travelers: Traveler[];
   payments: Payment[];
   termsSnapshot?: { itinerary: BookingItinerary; termsMarkdown?: string | null; frozenAt: string } | null;
   review?: { status: string; rating: number } | null;
+  supplierConfirmations: SupplierConfirmation[];
 }
 
 export interface PublicBookingReview {

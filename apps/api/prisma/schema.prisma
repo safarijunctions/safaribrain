@@ -55,6 +55,8 @@ model Organization {
   aiJobs        AiJob[]
   departures    Departure[]
   reviews       Review[]
+  vehicles      Vehicle[]
+  supplierConfirmations SupplierConfirmation[]
 
   @@map("organizations")
 }
@@ -453,20 +455,88 @@ model Booking {
   guideName      String?
   guidePhone     String?
   pickupNotes    String?
+  // The vehicle assigned for this trip (§4.3 "vehicle compliance") — a
+  // plain FK to the org's own fleet, staff-only, alongside the guide fields.
+  vehicleId      String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  organization  Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  request       EnquiryRequest        @relation(fields: [requestId], references: [id])
-  quote         Quote?                @relation(fields: [quoteId], references: [id])
-  departure     Departure?            @relation(fields: [departureId], references: [id])
+  organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  request       EnquiryRequest         @relation(fields: [requestId], references: [id])
+  quote         Quote?                 @relation(fields: [quoteId], references: [id])
+  departure     Departure?             @relation(fields: [departureId], references: [id])
+  vehicle       Vehicle?               @relation(fields: [vehicleId], references: [id])
   termsSnapshot BookingTermsSnapshot?
   travelers     Traveler[]
   payments      Payment[]
   seats         Seat[]
   review        Review?
+  supplierConfirmations SupplierConfirmation[]
 
   @@map("bookings")
+}
+
+// ---------------------------------------------------------------------------
+// Fleet (§4.3 "vehicle compliance") — the org's own vehicles, tracked for
+// insurance/inspection expiry so an expired vehicle isn't quietly assigned
+// to a trip. Expiry state is computed at read time (same lazy-check pattern
+// Departure hold expiry uses) rather than needing a background job.
+// ---------------------------------------------------------------------------
+
+enum VehicleStatus {
+  ACTIVE
+  MAINTENANCE
+  RETIRED
+}
+
+model Vehicle {
+  id                 String        @id @default(cuid())
+  organizationId     String
+  name               String // e.g. "Land Cruiser #2"
+  registrationNumber String
+  capacity           Int
+  status             VehicleStatus @default(ACTIVE)
+  insuranceExpiry    DateTime?
+  inspectionExpiry   DateTime?
+  notes              String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookings     Booking[]
+
+  @@map("vehicles")
+}
+
+// ---------------------------------------------------------------------------
+// Supplier confirmations (§4.3 "calendar/supplier confirmations") — a
+// per-booking checklist of the lodges/permits/transport an operator needs a
+// yes from before a trip is truly ready, independent of payment status.
+// ---------------------------------------------------------------------------
+
+enum SupplierConfirmationStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+}
+
+model SupplierConfirmation {
+  id             String                     @id @default(cuid())
+  organizationId String
+  bookingId      String
+  supplierName   String
+  supplierType   String? // free text, e.g. "Lodge", "Park permit", "Transport"
+  status         SupplierConfirmationStatus @default(PENDING)
+  referenceCode  String?
+  neededBy       DateTime?
+  confirmedAt    DateTime?
+  notes          String?
+  createdAt      DateTime                   @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("supplier_confirmations")
 }
 
 // ---------------------------------------------------------------------------

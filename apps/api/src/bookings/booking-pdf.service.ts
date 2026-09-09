@@ -45,6 +45,7 @@ export interface BookingPdfInput {
   guideName?: string | null;
   guidePhone?: string | null;
   pickupNotes?: string | null;
+  vehicle?: { name: string; registrationNumber: string } | null;
 }
 
 @Injectable()
@@ -211,6 +212,8 @@ export class BookingPdfService {
       doc.fontSize(13).fillColor(CLAY_700).text("Logistics", MARGIN, y);
       y += 20;
       doc.fontSize(10).fillColor(INK).text(`Guide/driver: ${input.guideName || "— not yet assigned —"}${input.guidePhone ? ` (${input.guidePhone})` : ""}`, MARGIN, y, { width: WIDTH - MARGIN * 2 });
+      y += 16;
+      doc.fillColor(INK).text(`Vehicle: ${input.vehicle ? `${input.vehicle.name} (${input.vehicle.registrationNumber})` : "— not yet assigned —"}`, MARGIN, y, { width: WIDTH - MARGIN * 2 });
       y += 16;
       doc.fillColor(INK).text(`Client contact: ${input.contactName}${input.contactWhatsapp ? ` · WhatsApp ${input.contactWhatsapp}` : ""}`, MARGIN, y, { width: WIDTH - MARGIN * 2 });
       y += 16;

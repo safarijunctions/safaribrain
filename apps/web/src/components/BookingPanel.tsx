@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { Booking } from "../types";
+import { Booking, Vehicle } from "../types";
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-stone-100 text-stone-700",
@@ -13,6 +13,12 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const PAYMENT_METHODS = ["BANK_TRANSFER", "CASH", "MOBILE_MONEY_MANUAL"] as const;
+
+const CONFIRMATION_STATUS_COLORS: Record<string, string> = {
+  PENDING: "bg-stone-100 text-stone-700",
+  CONFIRMED: "bg-acacia-100 text-acacia-800",
+  DECLINED: "bg-red-100 text-red-700",
+};
 
 export function BookingPanel({ booking, onChanged }: { booking: Booking; onChanged: () => void }) {
   const qc = useQueryClient();
@@ -28,7 +34,18 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
   const [guideName, setGuideName] = useState(booking.guideName ?? "");
   const [guidePhone, setGuidePhone] = useState(booking.guidePhone ?? "");
   const [pickupNotes, setPickupNotes] = useState(booking.pickupNotes ?? "");
+  const [vehicleId, setVehicleId] = useState(booking.vehicleId ?? "");
   const [manifestError, setManifestError] = useState<string | null>(null);
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [supplierName, setSupplierName] = useState("");
+  const [supplierType, setSupplierType] = useState("");
+  const [supplierNeededBy, setSupplierNeededBy] = useState("");
+  const [referenceDrafts, setReferenceDrafts] = useState<Record<string, string>>({});
+
+  const { data: vehicles } = useQuery({
+    queryKey: ["fleet-vehicles"],
+    queryFn: () => api.get<Vehicle[]>("/fleet/vehicles"),
+  });
 
   function invalidate() {
     qc.invalidateQueries();
@@ -52,11 +69,33 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
   });
 
   const updateLogistics = useMutation({
-    mutationFn: () => api.patch(`/bookings/${booking.id}/logistics`, { guideName, guidePhone, pickupNotes }),
+    mutationFn: () => api.patch(`/bookings/${booking.id}/logistics`, { guideName, guidePhone, pickupNotes, vehicleId: vehicleId || null }),
     onSuccess: () => {
       setShowLogisticsForm(false);
       invalidate();
     },
+  });
+
+  const addSupplierConfirmation = useMutation({
+    mutationFn: () =>
+      api.post(`/bookings/${booking.id}/supplier-confirmations`, {
+        supplierName,
+        supplierType: supplierType || undefined,
+        neededBy: supplierNeededBy || undefined,
+      }),
+    onSuccess: () => {
+      setSupplierName("");
+      setSupplierType("");
+      setSupplierNeededBy("");
+      setShowSupplierForm(false);
+      invalidate();
+    },
+  });
+
+  const updateSupplierConfirmation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "CONFIRMED" | "DECLINED" | "PENDING" }) =>
+      api.patch(`/bookings/${booking.id}/supplier-confirmations/${id}`, { status, referenceCode: referenceDrafts[id] || undefined }),
+    onSuccess: invalidate,
   });
 
   async function downloadManifest() {
@@ -171,15 +210,29 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
         )}
       </div>
 
-      {/* Guide/pickup logistics — internal only, feeds the guide manifest */}
+      {/* Guide/vehicle/pickup logistics — internal only, feeds the guide manifest */}
       <div>
-        <p className="text-xs font-medium text-stone-500 mb-1.5">Guide & pickup logistics</p>
+        <p className="text-xs font-medium text-stone-500 mb-1.5">Guide, vehicle & pickup logistics</p>
         {!showLogisticsForm ? (
           <div className="text-sm space-y-0.5">
             <p>{booking.guideName ? `${booking.guideName}${booking.guidePhone ? ` (${booking.guidePhone})` : ""}` : <span className="text-stone-400">No guide assigned yet.</span>}</p>
+            <p>
+              {booking.vehicle ? (
+                <>
+                  {booking.vehicle.name} ({booking.vehicle.registrationNumber})
+                  {booking.vehicle.complianceStatus !== "OK" && booking.vehicle.complianceStatus !== "NOT_TRACKED" && (
+                    <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${booking.vehicle.complianceStatus === "EXPIRED" ? "bg-red-100 text-red-700" : "bg-sunset-100 text-sunset-700"}`}>
+                      {booking.vehicle.complianceStatus === "EXPIRED" ? "compliance expired" : "compliance expiring soon"}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-stone-400">No vehicle assigned yet.</span>
+              )}
+            </p>
             {booking.pickupNotes && <p className="text-xs text-stone-500">{booking.pickupNotes}</p>}
             <button onClick={() => setShowLogisticsForm(true)} className="text-xs text-clay-700 hover:underline mt-1">
-              {booking.guideName ? "Edit" : "+ Assign guide"}
+              {booking.guideName || booking.vehicle ? "Edit" : "+ Assign guide/vehicle"}
             </button>
           </div>
         ) : (
@@ -196,6 +249,14 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
               value={guidePhone}
               onChange={(e) => setGuidePhone(e.target.value)}
             />
+            <select className="sm:col-span-2 border border-stone-300 rounded px-2 py-1.5" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
+              <option value="">No vehicle assigned</option>
+              {vehicles?.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name} ({v.registrationNumber}){v.complianceStatus === "EXPIRED" ? " — compliance expired" : v.complianceStatus === "EXPIRING_SOON" ? " — compliance expiring soon" : ""}
+                </option>
+              ))}
+            </select>
             <textarea
               className="sm:col-span-2 border border-stone-300 rounded px-2 py-1.5"
               placeholder="Pickup notes (location, flight number, time…)"
@@ -212,6 +273,88 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
                 Save
               </button>
               <button onClick={() => setShowLogisticsForm(false)} className="border border-stone-300 rounded px-3 py-1.5">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Supplier confirmations — §4.3 "calendar/supplier confirmations":
+          a checklist of lodges/permits/transport the operator needs a yes
+          from before a trip is ready, independent of payment status. */}
+      <div>
+        <p className="text-xs font-medium text-stone-500 mb-1.5">Supplier confirmations</p>
+        {booking.supplierConfirmations.length === 0 && <p className="text-xs text-stone-400">None added yet.</p>}
+        <ul className="text-sm space-y-1.5">
+          {booking.supplierConfirmations.map((c) => (
+            <li key={c.id} className="flex items-center justify-between gap-2 flex-wrap">
+              <span>
+                {c.supplierName}
+                {c.supplierType && <span className="text-stone-400"> · {c.supplierType}</span>}
+                {c.referenceCode && <span className="text-stone-400"> · ref {c.referenceCode}</span>}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${CONFIRMATION_STATUS_COLORS[c.status]}`}>{c.status}</span>
+                {c.status === "PENDING" && (
+                  <>
+                    <input
+                      className="border border-stone-300 rounded px-1.5 py-1 text-xs w-24"
+                      placeholder="Ref #"
+                      value={referenceDrafts[c.id] ?? ""}
+                      onChange={(e) => setReferenceDrafts((d) => ({ ...d, [c.id]: e.target.value }))}
+                    />
+                    <button
+                      onClick={() => updateSupplierConfirmation.mutate({ id: c.id, status: "CONFIRMED" })}
+                      className="text-xs text-acacia-700 hover:underline"
+                    >
+                      Confirm
+                    </button>
+                    <button
+                      onClick={() => updateSupplierConfirmation.mutate({ id: c.id, status: "DECLINED" })}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      Decline
+                    </button>
+                  </>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {!showSupplierForm ? (
+          <button onClick={() => setShowSupplierForm(true)} className="text-xs text-clay-700 hover:underline mt-1.5">
+            + Add supplier confirmation
+          </button>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
+            <input
+              className="sm:col-span-2 border border-stone-300 rounded px-2 py-1.5"
+              placeholder="Supplier (e.g. Serena Lodge)"
+              value={supplierName}
+              onChange={(e) => setSupplierName(e.target.value)}
+            />
+            <input
+              className="border border-stone-300 rounded px-2 py-1.5"
+              placeholder="Type (Lodge, Permit…)"
+              value={supplierType}
+              onChange={(e) => setSupplierType(e.target.value)}
+            />
+            <input
+              type="date"
+              className="border border-stone-300 rounded px-2 py-1.5"
+              value={supplierNeededBy}
+              onChange={(e) => setSupplierNeededBy(e.target.value)}
+            />
+            <div className="col-span-2 sm:col-span-4 flex gap-1.5">
+              <button
+                onClick={() => addSupplierConfirmation.mutate()}
+                disabled={!supplierName || addSupplierConfirmation.isPending}
+                className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+              >
+                Add
+              </button>
+              <button onClick={() => setShowSupplierForm(false)} className="border border-stone-300 rounded px-3 py-1.5">
                 Cancel
               </button>
             </div>

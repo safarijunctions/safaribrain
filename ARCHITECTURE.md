@@ -430,6 +430,63 @@ even the just-published review still rendered correctly, with the offline
 banner showing and both PDF buttons correctly disabled. That's the actual
 acceptance bar §10.9 sets, not just "a service worker file exists."
 
+## What's built: vehicle compliance and supplier confirmations
+
+The last two explicit gates in Phase 2's "Booking **and trip delivery**"
+title (§7/§4.3): a fleet an operator can actually track compliance on, and a
+per-booking checklist for the lodges/permits/transport a trip depends on.
+
+**Fleet compliance.** `Vehicle` is an org-owned asset (`name`,
+`registrationNumber`, `capacity`, `status`, `insuranceExpiry`,
+`inspectionExpiry`) — deliberately not tied to any one booking, since the
+same vehicle serves many trips over its life. Whether it's road-legal is
+computed at read time from its expiry dates (`FleetService`'s
+`computeComplianceStatus`: `EXPIRED` / `EXPIRING_SOON` (30-day window) /
+`OK` / `NOT_TRACKED`) — the same lazy-evaluation pattern `Departure` hold
+expiry already uses, so there's no sweep job to keep a stored status field
+correct. Every write (`POST`/`PATCH`/`DELETE /fleet/vehicles`) is gated by a
+new `MANAGE_FLEET` permission — safety-critical per §3, so it's scoped
+separately from `MANAGE_CONTENT`/`ADMIN` rather than folded into either.
+Reads are unrestricted to any authenticated staff member, same as the CRM
+data everyone already sees, since assigning a vehicle to a booking
+(`BookingsService.updateLogistics`, extended with `vehicleId` alongside the
+existing guide fields) needs the list without needing fleet-management
+rights itself — the assignment is validated to belong to the same org
+(`NotFoundException` otherwise), same cross-tenant guard every other
+`getOwned`-style lookup in this codebase uses. The assigned vehicle now
+also appears on the staff-only guide manifest PDF next to the guide/driver
+line; the public booking page was re-checked to confirm it still never
+appears there.
+
+**Supplier confirmations.** `SupplierConfirmation` is a simple per-booking
+checklist row (`supplierName`, `supplierType` free text, `status`
+PENDING/CONFIRMED/DECLINED, `referenceCode`, `neededBy`, `confirmedAt`) —
+independent of the booking's payment status, since a fully-paid trip can
+still have an unconfirmed lodge booking. No new permission gates it: adding
+and updating confirmations is booking management, the same access level
+`addTraveler`/`recordPayment` already use, not a financial or safety action
+in its own right. `confirmedAt` is set/cleared automatically by
+`updateSupplierConfirmation` based on the status transition rather than
+being a field the caller sets directly, so it can't drift from the status
+it's supposed to describe.
+
+**Verified end-to-end**, not just by reading the code: created a vehicle
+with an insurance date inside the 30-day window via the Admin Portal's new
+"Fleet" tab and confirmed it rendered "Expiring soon"; confirmed a
+non-`MANAGE_FLEET` operator gets 403 creating a vehicle but can still list
+them; assigned that vehicle and a guide to a real seat-map booking from
+`BookingPanel` and confirmed both the operator-facing panel and the
+downloaded guide manifest PDF showed it (decoded the PDF's compressed
+content stream directly to confirm the literal text, not just that the
+code path runs); confirmed a bogus `vehicleId` on the logistics endpoint
+returns 404 rather than silently accepting a cross-tenant or non-existent
+vehicle; added a supplier confirmation, confirmed it defaulted to PENDING,
+then confirmed it (with a reference code) and separately declined a second
+one from the UI, watching the status pill and `confirmedAt` update
+correctly in both directions; confirmed the public `/booking/:token` JSON
+never includes `vehicle`, `guideName`, or `supplierConfirmations` at any
+point in this flow.
+
 ## Visual design
 
 The app now has an actual brand identity instead of default Tailwind gray/
@@ -519,12 +576,12 @@ reassignments. Admin visibility doesn't mean admin invisibility.
   "PAYMENT")`) is unchanged from Phase 1 and ready whenever a session with
   real network access and a test-mode Stripe/M-Pesa credential can build
   and actually verify it.
-- **SOS/medevac, vehicle compliance, calendar/supplier confirmations** —
-  still-unbuilt pieces of Phase 2's "Booking and trip delivery" scope per
-  §7/§4.3. Guide manifests and offline trip access are now built (see
-  above); SOS/medevac specifically needs a real dispatch-partner
+- **SOS/medevac** — the one still-unbuilt piece of Phase 2's "Booking and
+  trip delivery" scope per §7/§4.3. Guide manifests, offline trip access,
+  vehicle compliance, and supplier confirmations are now built (see
+  below); SOS/medevac specifically needs a real dispatch-partner
   integration (e.g. AMREF Flying Doctors) to be more than a UI mockup, so
-  it's deferred with the other partner-dependent items rather than half-built.
+  it's deferred until that partnership exists rather than half-built.
 - **Trade portal, deeper Phase 4 automation (translation, fee extraction,
   proposal rewrite, news summary — the other `AiJobKind` values beyond
   `ITINERARY_DRAFT`), super-app/native app** — Phase 3's marketplace and

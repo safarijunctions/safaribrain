@@ -14,6 +14,7 @@ import { MarketplaceModule } from "./marketplace/marketplace.module";
 import { AiModule } from "./ai/ai.module";
 import { DeparturesModule } from "./departures/departures.module";
 import { ReviewsModule } from "./reviews/reviews.module";
+import { FleetModule } from "./fleet/fleet.module";
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ReviewsModule } from "./reviews/reviews.module";
     AiModule,
     DeparturesModule,
     ReviewsModule,
+    FleetModule,
   ],
 })
 export class AppModule {}
