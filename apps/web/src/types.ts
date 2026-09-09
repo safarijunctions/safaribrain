@@ -287,6 +287,15 @@ export interface Booking {
   travelers: Traveler[];
   payments: Payment[];
   termsSnapshot?: { itinerary: BookingItinerary; termsMarkdown?: string | null; frozenAt: string } | null;
+  review?: { status: string; rating: number } | null;
+}
+
+export interface PublicBookingReview {
+  status: "PENDING" | "PUBLISHED" | "REJECTED";
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  operatorReply?: string | null;
 }
 
 export interface PublicBooking {
@@ -300,4 +309,33 @@ export interface PublicBooking {
   payments: { amount: string; method: string; createdAt: string }[];
   itinerary: BookingItinerary | null;
   termsMarkdown?: string | null;
+  review: PublicBookingReview | null;
+}
+
+export interface PublishedReview {
+  id: string;
+  reviewerName: string;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  operatorReply?: string | null;
+  createdAt: string;
+}
+
+export interface ReviewSummary {
+  average: number | null;
+  count: number;
+  reviews: PublishedReview[];
+}
+
+export interface ModerationReview {
+  id: string;
+  reviewerName: string;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  status: string;
+  createdAt: string;
+  booking: { ticketToken: string };
+  tourTemplate?: { title: string } | null;
 }

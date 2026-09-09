@@ -6,14 +6,16 @@ import { AuditLogPanel } from "../components/AuditLogPanel";
 import { ContentPanel } from "../components/ContentPanel";
 import { ListingsPanel } from "../components/ListingsPanel";
 import { AiDraftPanel } from "../components/AiDraftPanel";
+import { ReviewsPanel } from "../components/ReviewsPanel";
 
-const TABS = ["overview", "content", "listings", "ai", "integrations", "users", "audit"] as const;
+const TABS = ["overview", "content", "listings", "reviews", "ai", "integrations", "users", "audit"] as const;
 type Tab = (typeof TABS)[number];
 
 const TAB_LABELS: Record<Tab, string> = {
   overview: "Overview",
   content: "Content",
   listings: "Marketplace",
+  reviews: "Reviews",
   ai: "AI Drafts",
   integrations: "Integrations",
   users: "Team",
@@ -47,6 +49,7 @@ export function AdminPage() {
       {tab === "overview" && <OverviewPanel />}
       {tab === "content" && <ContentPanel />}
       {tab === "listings" && <ListingsPanel />}
+      {tab === "reviews" && <ReviewsPanel />}
       {tab === "ai" && <AiDraftPanel />}
       {tab === "integrations" && <IntegrationsPanel />}
       {tab === "users" && <UsersPanel />}

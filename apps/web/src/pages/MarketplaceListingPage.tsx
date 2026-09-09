@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useParams, Link } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { MarketplaceListingDetail, Departure } from "../types";
+import { MarketplaceListingDetail, Departure, ReviewSummary } from "../types";
 import { AcaciaSilhouette } from "../components/AcaciaSilhouette";
 
 export function MarketplaceListingPage() {
@@ -18,6 +18,11 @@ export function MarketplaceListingPage() {
   const { data: departures } = useQuery({
     queryKey: ["marketplace-departures", id],
     queryFn: () => api.get<Departure[]>(`/marketplace/templates/${id}/departures`),
+  });
+
+  const { data: reviewSummary } = useQuery({
+    queryKey: ["marketplace-reviews", id],
+    queryFn: () => api.get<ReviewSummary>(`/marketplace/templates/${id}/reviews`),
   });
 
   const [fullName, setFullName] = useState("");
@@ -61,6 +66,12 @@ export function MarketplaceListingPage() {
           <p className="text-xs uppercase tracking-[0.15em] text-sunset-200">{data.organization.name} · {data.organization.country}</p>
           <h1 className="font-display text-2xl font-semibold mt-1">{data.title}</h1>
           <p className="text-sm text-white/80 mt-1">{data.summary}</p>
+          {reviewSummary && reviewSummary.count > 0 && (
+            <p className="text-xs text-sunset-200 mt-2">
+              {"★".repeat(Math.round(reviewSummary.average ?? 0))}
+              {"☆".repeat(5 - Math.round(reviewSummary.average ?? 0))} {reviewSummary.average?.toFixed(1)} ({reviewSummary.count} review{reviewSummary.count === 1 ? "" : "s"})
+            </p>
+          )}
         </div>
 
         <div className="p-7 space-y-7">
@@ -85,6 +96,27 @@ export function MarketplaceListingPage() {
             <section className="text-xs text-stone-500 border-t border-stone-100 pt-5">
               <h3 className="font-medium text-stone-700 mb-1.5">Terms</h3>
               <p>{latest.termsMarkdown}</p>
+            </section>
+          )}
+
+          {reviewSummary && reviewSummary.reviews.length > 0 && (
+            <section className="border-t border-stone-200 pt-6">
+              <h2 className="font-display text-lg font-semibold text-clay-800 mb-3">Traveler reviews</h2>
+              <div className="space-y-4">
+                {reviewSummary.reviews.map((r) => (
+                  <div key={r.id} className="border-b border-stone-100 pb-3 last:border-0">
+                    <p className="text-sm text-sunset-600">{"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}</p>
+                    {r.title && <p className="text-sm font-medium text-stone-800 mt-0.5">{r.title}</p>}
+                    {r.body && <p className="text-sm text-stone-600 mt-0.5">{r.body}</p>}
+                    {r.operatorReply && (
+                      <div className="bg-clay-50 rounded-lg p-2.5 text-xs text-stone-600 mt-2">
+                        <p className="font-medium text-clay-700 mb-1">Reply from {data.organization.name}</p>
+                        {r.operatorReply}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 

@@ -98,6 +98,15 @@ export enum BookingStatus {
   CANCELLED = "CANCELLED",
 }
 
+// A review is never shown publicly (ReviewStatus.PENDING) until a human
+// with MODERATE_LISTING publishes it — §1.3's human-approval principle
+// extended to reputation, not just price/content (§7 Phase 3 gate).
+export enum ReviewStatus {
+  PENDING = "PENDING",
+  PUBLISHED = "PUBLISHED",
+  REJECTED = "REJECTED",
+}
+
 // Staff-recorded methods only — no payment gateway has been chosen yet
 // (§11 open decision). Once an admin adds a real gateway credential via
 // Integrations (§4.9), gateway-originated payments write into the same

@@ -1,8 +1,32 @@
+import { useEffect, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { PublicBooking } from "../types";
 import { AcaciaSilhouette } from "../components/AcaciaSilhouette";
+
+const STARS = [1, 2, 3, 4, 5];
+
+// §8: "essential itinerary/contacts/vouchers/tickets/maps cached for
+// offline use... never imply a payment or seat is confirmed while
+// offline." The service worker (public/sw.js) makes a previously-opened
+// booking page load transparently from cache with no network — this hook
+// is what tells the UI it's happening, so it can label the state rather
+// than silently show possibly-stale data as if it were live.
+function useOnlineStatus() {
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+  return online;
+}
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Awaiting confirmation",
@@ -15,6 +39,8 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function BookingStatusPage() {
   const { token } = useParams({ strict: false }) as { token: string };
+  const qc = useQueryClient();
+  const online = useOnlineStatus();
 
   const { data, isLoading } = useQuery({
     queryKey: ["booking-public", token],
@@ -24,7 +50,7 @@ export function BookingStatusPage() {
   if (isLoading || !data)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sunset-50 to-acacia-50">
-        <p className="text-sm text-stone-500">Loading your booking…</p>
+        <p className="text-sm text-stone-500">{online ? "Loading your booking…" : "You're offline, and this page hasn't been saved for offline use yet."}</p>
       </div>
     );
 
@@ -36,6 +62,11 @@ export function BookingStatusPage() {
       <AcaciaSilhouette className="hidden md:block absolute bottom-8 right-8 h-20 w-20 text-acacia-800/10 lg:h-28 lg:w-28" />
 
       <div className="relative max-w-2xl mx-auto bg-white rounded-2xl shadow-xl shadow-clay-900/10 border border-white overflow-hidden">
+        {!online && (
+          <div className="bg-sunset-100 text-sunset-800 text-xs font-medium text-center py-2 px-4">
+            You're offline — showing the last saved copy of this page. Payments and reviews need a connection to go through.
+          </div>
+        )}
         <div className="bg-gradient-to-br from-clay-700 via-clay-700 to-acacia-800 text-white px-7 py-6 flex items-start justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.15em] text-sunset-200">Safari Junction's Adventures</p>
@@ -115,21 +146,57 @@ export function BookingStatusPage() {
             </section>
           )}
 
+          {data.status === "COMPLETED" && (
+            <section className="border-t border-stone-200 pt-6">
+              <h2 className="font-display text-lg font-semibold text-clay-800 mb-3">How was your trip?</h2>
+              {data.review ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-sunset-600">{"★".repeat(data.review.rating)}{"☆".repeat(5 - data.review.rating)}</p>
+                  {data.review.title && <p className="text-sm font-medium text-stone-800">{data.review.title}</p>}
+                  {data.review.body && <p className="text-sm text-stone-600">{data.review.body}</p>}
+                  {data.review.status === "PENDING" && <p className="text-xs text-stone-400">Thanks — your review is awaiting a quick check before it goes live.</p>}
+                  {data.review.operatorReply && (
+                    <div className="bg-clay-50 rounded-lg p-3 text-xs text-stone-600">
+                      <p className="font-medium text-clay-700 mb-1">Reply from Safari Junction's Adventures</p>
+                      {data.review.operatorReply}
+                    </div>
+                  )}
+                </div>
+              ) : online ? (
+                <ReviewForm token={token} onSubmitted={() => qc.invalidateQueries({ queryKey: ["booking-public", token] })} />
+              ) : (
+                <p className="text-xs text-stone-400">You'll be able to leave a review once you're back online.</p>
+              )}
+            </section>
+          )}
+
           <section className="flex flex-wrap gap-3 text-sm border-t border-stone-200 pt-6">
             <a
-              href={`/api/bookings/public/${token}/receipt.pdf`}
+              href={online ? `/api/bookings/public/${token}/receipt.pdf` : undefined}
               target="_blank"
               rel="noreferrer"
-              className="flex-1 text-center bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white font-medium rounded-xl py-3 shadow-sm shadow-clay-900/20 transition"
+              aria-disabled={!online}
+              title={online ? undefined : "Downloads need a connection"}
+              className={`flex-1 text-center font-medium rounded-xl py-3 shadow-sm transition ${
+                online
+                  ? "bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white shadow-clay-900/20"
+                  : "bg-stone-200 text-stone-400 cursor-not-allowed pointer-events-none"
+              }`}
             >
               Download receipt
             </a>
             {ticketReady && (
               <a
-                href={`/api/bookings/public/${token}/eticket.pdf`}
+                href={online ? `/api/bookings/public/${token}/eticket.pdf` : undefined}
                 target="_blank"
                 rel="noreferrer"
-                className="flex-1 text-center bg-gradient-to-r from-acacia-600 to-acacia-700 hover:from-acacia-700 hover:to-acacia-800 text-white font-medium rounded-xl py-3 shadow-sm shadow-acacia-900/20 transition"
+                aria-disabled={!online}
+                title={online ? undefined : "Downloads need a connection"}
+                className={`flex-1 text-center font-medium rounded-xl py-3 shadow-sm transition ${
+                  online
+                    ? "bg-gradient-to-r from-acacia-600 to-acacia-700 hover:from-acacia-700 hover:to-acacia-800 text-white shadow-acacia-900/20"
+                    : "bg-stone-200 text-stone-400 cursor-not-allowed pointer-events-none"
+                }`}
               >
                 Download e-ticket
               </a>
@@ -137,6 +204,45 @@ export function BookingStatusPage() {
           </section>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ReviewForm({ token, onSubmitted }: { token: string; onSubmitted: () => void }) {
+  const [rating, setRating] = useState(0);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+
+  const submit = useMutation({
+    mutationFn: () => api.post(`/bookings/public/${token}/review`, { rating, title: title || undefined, body: body || undefined }),
+    onSuccess: onSubmitted,
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1 text-2xl">
+        {STARS.map((n) => (
+          <button key={n} onClick={() => setRating(n)} className={n <= rating ? "text-sunset-500" : "text-stone-300"} aria-label={`${n} star${n > 1 ? "s" : ""}`}>
+            ★
+          </button>
+        ))}
+      </div>
+      <input className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm" placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <textarea
+        className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm"
+        rows={3}
+        placeholder="Tell other travelers about your trip…"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+      />
+      {submit.isError && <p className="text-xs text-red-600">{(submit.error as Error).message}</p>}
+      <button
+        onClick={() => submit.mutate()}
+        disabled={rating === 0 || submit.isPending}
+        className="w-full bg-gradient-to-r from-sunset-500 to-sunset-600 hover:from-sunset-600 hover:to-sunset-700 text-white font-medium rounded-xl py-3 shadow-sm shadow-sunset-900/20 transition disabled:opacity-50"
+      >
+        {submit.isPending ? "Sending…" : "Submit review"}
+      </button>
     </div>
   );
 }

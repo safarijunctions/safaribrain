@@ -112,6 +112,26 @@ The concurrency guarantee this mode depends on — two people can't buy the
 same seat — was verified with an actual test, not just reasoned about: ten
 simultaneous hold requests for one seat, exactly one wins.
 
+### Post-trip reviews and offline access
+
+15. Back in the operator's `BookingPanel` for any `PAID` or `ACTIVE`
+    booking, click **Mark trip completed**, then record a full payment if
+    it isn't already fully paid.
+16. On that booking's public status page (`/booking/:token`), a "How was
+    your trip?" section now appears — leave a star rating and a comment.
+    It's `PENDING` until a human checks it: as **admin**, open **Admin →
+    Reviews**, publish it (or reject it), and optionally reply — the reply
+    shows up publicly next to the review on both the booking page and the
+    marketplace listing.
+17. To see offline support for real: build for production
+    (`pnpm --filter @safaribrain/web build && pnpm --filter @safaribrain/web preview`
+    — the service worker only registers outside dev mode), open a booking
+    status page once with the network on, then go offline (devtools →
+    Network → Offline, or airplane mode) and reload the same URL. The
+    itinerary, payment history, and any review still render from cache,
+    with a clear "you're offline" banner and the PDF download buttons
+    grayed out — payments and reviews always require a real connection.
+
 ## Admin Portal
 
 Sign in as **admin** and open the "Admin" link in the header:
@@ -124,6 +144,9 @@ Sign in as **admin** and open the "Admin" link in the header:
 - **Marketplace** — toggle which tour templates are publicly browsable at
   `/marketplace` with no login required; anyone who submits an enquiry
   there lands in the same CRM pipeline as any other lead.
+- **Reviews** — moderate post-trip reviews: publish or reject each pending
+  submission, and optionally reply — the reply is shown publicly alongside
+  the review on the booking status page and the marketplace listing.
 - **AI Drafts** — describe a trip in plain language and an AI drafts a
   day-by-day itinerary you can edit before approving it into a real tour
   template. Requires an `LLM_PROVIDER` integration below; nothing is

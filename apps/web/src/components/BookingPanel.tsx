@@ -69,6 +69,11 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
     }
   }
 
+  const markCompleted = useMutation({
+    mutationFn: () => api.post(`/bookings/${booking.id}/complete`),
+    onSuccess: invalidate,
+  });
+
   const recordPayment = useMutation({
     mutationFn: () =>
       api.post(`/bookings/${booking.id}/payments`, {
@@ -97,6 +102,24 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
           {balanceDue > 0 && <span className="text-xs text-stone-400 font-normal ml-1.5">({booking.currency} {balanceDue.toLocaleString()} due)</span>}
         </p>
       </div>
+
+      {["PAID", "ACTIVE"].includes(booking.status) && (
+        <button
+          onClick={() => markCompleted.mutate()}
+          disabled={markCompleted.isPending}
+          className="text-xs font-medium border border-acacia-300 text-acacia-700 hover:bg-acacia-50 rounded px-3 py-1.5 disabled:opacity-50"
+        >
+          {markCompleted.isPending ? "Marking…" : "Mark trip completed"}
+        </button>
+      )}
+      {booking.status === "COMPLETED" && (
+        <p className="text-xs text-stone-500">
+          Trip completed —{" "}
+          {booking.review
+            ? `traveler ${booking.review.status === "PENDING" ? "left a review, awaiting moderation" : `left a ${booking.review.rating}★ review (${booking.review.status.toLowerCase()})`}`
+            : "the traveler can now leave a review from their booking status page."}
+        </p>
+      )}
 
       {/* Travelers */}
       <div>

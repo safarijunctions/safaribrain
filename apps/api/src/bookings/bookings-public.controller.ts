@@ -1,8 +1,10 @@
-import { BadRequestException, Controller, Get, Param, Res } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Post, Res } from "@nestjs/common";
 import type { Response } from "express";
 import { BookingStatus } from "@safaribrain/shared";
 import { BookingsService } from "./bookings.service";
 import { BookingPdfService, BookingPdfInput } from "./booking-pdf.service";
+import { ReviewsService } from "../reviews/reviews.service";
+import { SubmitReviewDto } from "../reviews/dto/submit-review.dto";
 
 // No auth guard by design, same reasoning as ProposalsController — a
 // traveler opens their e-ticket/status link directly (from WhatsApp, email,
@@ -12,6 +14,7 @@ export class BookingsPublicController {
   constructor(
     private readonly bookings: BookingsService,
     private readonly pdf: BookingPdfService,
+    private readonly reviews: ReviewsService,
   ) {}
 
   @Get(":token")
@@ -31,7 +34,16 @@ export class BookingsPublicController {
       payments: b.payments.map((p) => ({ amount: p.amount, method: p.method, createdAt: p.createdAt })),
       itinerary: b.termsSnapshot?.itinerary ?? null,
       termsMarkdown: b.termsSnapshot?.termsMarkdown ?? null,
+      // §4.1 post-trip review: only offered once the trip is COMPLETED, and
+      // only once — reviewStatus lets the client show "leave a review",
+      // "pending moderation", or the review itself, without a second call.
+      review: b.review ? { status: b.review.status, rating: b.review.rating, title: b.review.title, body: b.review.body, operatorReply: b.review.operatorReply } : null,
     };
+  }
+
+  @Post(":token/review")
+  submitReview(@Param("token") token: string, @Body() dto: SubmitReviewDto) {
+    return this.reviews.submitByToken(token, dto);
   }
 
   @Get(":token/receipt.pdf")

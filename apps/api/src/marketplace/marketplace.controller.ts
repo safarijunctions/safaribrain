@@ -4,6 +4,7 @@ import { MarketplaceEnquiryDto } from "./dto/marketplace-enquiry.dto";
 import { DeparturesService } from "../departures/departures.service";
 import { HoldSeatsDto } from "../departures/dto/hold-seats.dto";
 import { ConfirmSeatBookingDto } from "../departures/dto/confirm-booking.dto";
+import { ReviewsService } from "../reviews/reviews.service";
 
 // No auth guard by design, same reasoning as ProposalsController/
 // BookingsPublicController — a prospective traveler browses without an
@@ -16,6 +17,7 @@ export class MarketplaceController {
   constructor(
     private readonly marketplace: MarketplaceService,
     private readonly departures: DeparturesService,
+    private readonly reviews: ReviewsService,
   ) {}
 
   @Get("templates")
@@ -56,5 +58,10 @@ export class MarketplaceController {
   @Post("departures/:id/book")
   confirmBooking(@Param("id") id: string, @Body() dto: ConfirmSeatBookingDto) {
     return this.departures.confirmBooking(id, dto);
+  }
+
+  @Get("templates/:id/reviews")
+  listReviews(@Param("id") id: string) {
+    return this.reviews.listPublicForTemplate(id);
   }
 }

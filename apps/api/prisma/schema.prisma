@@ -54,6 +54,7 @@ model Organization {
   bookings      Booking[]
   aiJobs        AiJob[]
   departures    Departure[]
+  reviews       Review[]
 
   @@map("organizations")
 }
@@ -75,6 +76,7 @@ model User {
   recordedPayments Payment[]
   aiJobsRequested AiJob[] @relation("AiJobRequestedBy")
   aiJobsDecided   AiJob[] @relation("AiJobDecidedBy")
+  moderatedReviews Review[]
 
   @@map("users")
 }
@@ -289,6 +291,7 @@ model TourTemplate {
   versions     TemplateVersion[]
   quotes       Quote[]
   departures   Departure[]
+  reviews      Review[]
 
   @@map("tour_templates")
 }
@@ -461,6 +464,7 @@ model Booking {
   travelers     Traveler[]
   payments      Payment[]
   seats         Seat[]
+  review        Review?
 
   @@map("bookings")
 }
@@ -586,6 +590,48 @@ model Payment {
   recordedBy User?   @relation(fields: [recordedById], references: [id])
 
   @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Reviews (§6, §4.1, §7 Phase 3 gate: "post-trip review invite and
+// moderation"). A review can only be submitted against a COMPLETED
+// booking — reusing the trip's own contact identity rather than a
+// separate review-account system, consistent with §5's no-login
+// principle. Every review starts PENDING and is never shown publicly
+// until a human with MODERATE_LISTING publishes it (§1.3's human-approval
+// principle extended to reputation, not just price/content).
+// ---------------------------------------------------------------------------
+
+enum ReviewStatus {
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+model Review {
+  id             String       @id @default(cuid())
+  organizationId String
+  bookingId      String       @unique
+  // Denormalized at submission time from the booking's quote/departure
+  // template — lets the public marketplace query reviews by template
+  // without joining back through Booking -> Quote/Departure every time.
+  tourTemplateId String?
+  reviewerName   String
+  rating         Int // 1-5
+  title          String?
+  body           String?
+  status         ReviewStatus @default(PENDING)
+  operatorReply  String?
+  moderatedById  String?
+  moderatedAt    DateTime?
+  createdAt      DateTime     @default(now())
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking      Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tourTemplate TourTemplate? @relation(fields: [tourTemplateId], references: [id])
+  moderatedBy  User?         @relation(fields: [moderatedById], references: [id])
+
+  @@map("reviews")
 }
 
 // ---------------------------------------------------------------------------

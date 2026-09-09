@@ -382,6 +382,54 @@ same seat and releases expired holds automatically."*
   gets 403, unauthenticated gets 401; attempting to hold an already-booked
   seat gets 409; re-using a consumed hold token to book again gets 400.
 
+## What's built: post-trip reviews and offline trip access
+
+Two more explicit gates closed in this pass — §4.1's "traveler reviews
+(verified post-trip only)" plus §7 Phase 3's own stated gate ("post-trip
+review invite and moderation"), and §10.9's acceptance criterion ("the
+traveler can open essential trip details offline").
+
+**Reviews.** A `Review` is tied to a specific `Booking` (one per booking,
+enforced by a unique constraint) and can only be submitted once staff mark
+that booking `COMPLETED` (`BookingsService.markCompleted`, a new button in
+`BookingPanel` — no automatic "trip must be over by now" inference, a human
+confirms it happened). Every review starts `PENDING` and is invisible on
+the public marketplace until a human with `MODERATE_LISTING` publishes or
+rejects it from the new Admin "Reviews" tab, which can also post a public
+operator reply. `tourTemplateId` is denormalized onto the review at
+submission time (read off the booking's quote or departure, whichever
+produced it) so the public `GET /marketplace/templates/:id/reviews`
+endpoint — average rating + published reviews — doesn't need to join back
+through Booking on every request. Verified end-to-end: recorded a full
+payment, marked the booking completed, submitted a 5-star review from the
+booking status page, confirmed a second submission on the same booking is
+rejected, confirmed an operator without `MODERATE_LISTING` gets 403 trying
+to moderate it, published it and posted a reply as admin, and confirmed it
+then appears — with the reply — on the public marketplace listing.
+
+**Offline trip access.** `apps/web/public/sw.js` is a minimal service
+worker, registered only in production builds (`import.meta.env.PROD` —
+Vite's dev server and HMR don't mix well with a caching layer, and there's
+nothing to gain from it in dev). Scope is deliberately narrow: it caches
+navigations and the `/api/bookings/public/:token` response network-first
+with a cache fallback, plus the hashed JS/CSS build assets cache-first.
+Nothing else — every other API call, and every PDF download, always hits
+the network live, and **no `POST`/`PATCH`/`DELETE` request is ever
+intercepted or cached**, so a payment or a review can never appear to
+succeed while offline (§8's explicit requirement). `BookingStatusPage` also
+tracks `navigator.onLine` directly and shows an explicit banner plus grays
+out the PDF download buttons and the review form when offline, rather than
+letting a write action fail silently or confusingly.
+
+**This was verified against a real offline browser context, not assumed
+from the code:** opened a completed booking's status page once online (so
+the service worker installs and caches it), confirmed the worker reached
+`activated` state, then set the Playwright browser context fully offline
+and reloaded the *exact same URL* — the itinerary, payment history, and
+even the just-published review still rendered correctly, with the offline
+banner showing and both PDF buttons correctly disabled. That's the actual
+acceptance bar §10.9 sets, not just "a service worker file exists."
+
 ## Visual design
 
 The app now has an actual brand identity instead of default Tailwind gray/
@@ -471,10 +519,12 @@ reassignments. Admin visibility doesn't mean admin invisibility.
   "PAYMENT")`) is unchanged from Phase 1 and ready whenever a session with
   real network access and a test-mode Stripe/M-Pesa credential can build
   and actually verify it.
-- **PWA offline support, SOS/medevac, vehicle compliance, calendar/supplier
-  confirmations** — still-unbuilt pieces of Phase 2's "Booking and trip
-  delivery" scope per §7/§4.3. Guide manifests are now built (see above);
-  these remaining items need a booking to already exist, which it now does.
+- **SOS/medevac, vehicle compliance, calendar/supplier confirmations** —
+  still-unbuilt pieces of Phase 2's "Booking and trip delivery" scope per
+  §7/§4.3. Guide manifests and offline trip access are now built (see
+  above); SOS/medevac specifically needs a real dispatch-partner
+  integration (e.g. AMREF Flying Doctors) to be more than a UI mockup, so
+  it's deferred with the other partner-dependent items rather than half-built.
 - **Trade portal, deeper Phase 4 automation (translation, fee extraction,
   proposal rewrite, news summary — the other `AiJobKind` values beyond
   `ITINERARY_DRAFT`), super-app/native app** — Phase 3's marketplace and

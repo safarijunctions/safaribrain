@@ -13,6 +13,7 @@ import { BookingsModule } from "./bookings/bookings.module";
 import { MarketplaceModule } from "./marketplace/marketplace.module";
 import { AiModule } from "./ai/ai.module";
 import { DeparturesModule } from "./departures/departures.module";
+import { ReviewsModule } from "./reviews/reviews.module";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { DeparturesModule } from "./departures/departures.module";
     MarketplaceModule,
     AiModule,
     DeparturesModule,
+    ReviewsModule,
   ],
 })
 export class AppModule {}

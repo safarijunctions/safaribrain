@@ -11,6 +11,7 @@ const INCLUDE = {
   travelers: { orderBy: { createdAt: "asc" as const } },
   payments: { orderBy: { createdAt: "asc" as const }, include: { recordedBy: { select: { id: true, fullName: true } } } },
   request: { include: { contact: true } },
+  review: true,
 };
 
 // Phase 2 (§7) start: a booking is created automatically the instant a
@@ -118,6 +119,24 @@ export class BookingsService {
       include: INCLUDE,
     });
     await this.audit.record({ organizationId, actorId, action: "booking.update_logistics", entityType: "Booking", entityId: booking.id, metadata: dto as Record<string, unknown> });
+    return updated;
+  }
+
+  // Unlocks the post-trip review flow (§4.1, §7 Phase 3 gate) — a review
+  // can only be submitted once a human confirms the trip actually
+  // happened, not automatically once the departure date passes (no
+  // automated "trip must be over" inference; a guide/operator marks it).
+  async markCompleted(organizationId: string, actorId: string | undefined, bookingId: string) {
+    const booking = await this.getOwned(organizationId, bookingId);
+    if (![BookingStatus.PAID, BookingStatus.ACTIVE].includes(booking.status as any)) {
+      throw new BadRequestException(`Cannot mark a ${booking.status} booking as completed — it must be PAID or ACTIVE first`);
+    }
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: { status: BookingStatus.COMPLETED },
+      include: INCLUDE,
+    });
+    await this.audit.record({ organizationId, actorId, action: "booking.mark_completed", entityType: "Booking", entityId: booking.id });
     return updated;
   }
 }

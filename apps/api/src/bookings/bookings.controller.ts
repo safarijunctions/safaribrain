@@ -37,6 +37,11 @@ export class BookingsController {
     return this.bookings.updateLogistics(user.organizationId, user.sub, id, dto);
   }
 
+  @Post(":id/complete")
+  markCompleted(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
+    return this.bookings.markCompleted(user.organizationId, user.sub, id);
+  }
+
   // Staff-only, deliberately not on BookingsPublicController — carries
   // passport numbers and dates of birth for park-entry logs, which the
   // client-facing side never sees.
