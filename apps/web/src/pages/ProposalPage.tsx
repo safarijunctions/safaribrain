@@ -30,6 +30,12 @@ export function ProposalPage() {
       setActionDone("accepted");
       qc.invalidateQueries({ queryKey: ["proposal", token] });
     },
+    // A second tab, a double-click that slips past the disabled state, or
+    // simply reopening a stale page can all race this request against one
+    // that already succeeded — refetch so the page shows the real (already
+    // accepted) status instead of leaving the visitor stuck on a form for
+    // something that in fact already went through.
+    onError: () => qc.invalidateQueries({ queryKey: ["proposal", token] }),
   });
 
   const requestChanges = useMutation({
@@ -38,6 +44,7 @@ export function ProposalPage() {
       setActionDone("changes-requested");
       qc.invalidateQueries({ queryKey: ["proposal", token] });
     },
+    onError: () => qc.invalidateQueries({ queryKey: ["proposal", token] }),
   });
 
   if (isLoading || !data)
@@ -168,6 +175,11 @@ export function ProposalPage() {
                   Request changes
                 </button>
               </div>
+              {(accept.isError || requestChanges.isError) && (
+                <p className="text-sm text-red-600 text-center">
+                  {((accept.error ?? requestChanges.error) as Error).message}
+                </p>
+              )}
             </section>
           )}
 

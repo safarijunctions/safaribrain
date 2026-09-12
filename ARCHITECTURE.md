@@ -539,6 +539,85 @@ job's id returns 404 through the `reply-drafts` reject route, and vice
 versa — `reject()` now takes an explicit `AiJobKind` rather than assuming
 one, so the two features can't accidentally act on each other's jobs.
 
+## Hardening pass: a targeted code review, not a rewrite
+
+Prompted by an explicit "no bugs, no misunderstanding" ask, this pass ran a
+focused correctness review across everything built so far (~6,800 lines
+since the last point `main` was merged) rather than adding a new feature.
+Three findings came back; a fourth and a class of UI gaps surfaced while
+verifying the fixes by hand. All four are fixed and re-verified with real
+requests, not just re-read.
+
+**1. CI was silently broken on every push.** `.github/workflows/webpack.yml`
+was a generic "NodeJS with Webpack" template (added directly via the GitHub
+UI, outside this build) that ran `npm install` + `npx webpack` — but this
+repo is a pnpm workspace with no webpack config anywhere, so it failed on
+every single push/PR and gave no real signal. Replaced with
+`.github/workflows/ci.yml`: `pnpm install --frozen-lockfile` then `pnpm
+build`, which exercises the exact typecheck+build path this build has run
+before every push throughout the project.
+
+**2. `QuotesService.accept()` had a genuine double-accept race.** The status
+check (`quote.status !== SENT`) happened outside the transaction that
+creates the `PriceSnapshot`/`Booking`, so two concurrent `accept()` calls —
+a double-click, a client retry, the proposal link open in two tabs — could
+both read `SENT` before either committed. The loser would then hit a raw
+unique-constraint violation on `bookings_quoteId_key` and the whole batch
+would roll back as an unhandled 500, instead of a clean "already accepted."
+Fixed by making the transaction's first statement a conditional
+`updateMany({ where: { status: SENT }, data: { status: ACCEPTED } })`: only
+one concurrent caller can ever flip that row, so every other caller sees
+`count 0` and gets a clean `BadRequestException` instead. Applied the same
+guard to `requestChanges()`, which had the identical shape of race.
+**Verified for real**, the same way the seat-hold concurrency was verified
+earlier in this build: fired 10 genuinely simultaneous `accept()` requests
+at the same proposal token (`Promise.all`) — exactly 1 succeeded, the other
+9 got the clean "already accepted" 400, and the database ended up with
+exactly one `Booking` and one `PriceSnapshot` for that quote, not zero, not
+two.
+
+**3. `BookingsService.recordPayment()` had no upper bound.** A payment
+amount was validated as `> 0` and nothing else — a fat-fingered figure
+(typing 6600 instead of 660) would silently overpay a booking, flip it to
+`PAID`, and leave the receipt/e-ticket PDFs showing a nonsensical negative
+balance due. Fixed by rejecting any amount greater than the booking's
+actual remaining balance, computed fresh from `totalPrice - amountPaid`
+before the payment is written. **Verified**: an amount over the total is
+rejected with the exact remaining balance in the message; a partial payment
+followed by exactly-the-remaining-balance succeeds and flips the booking to
+`PAID`; any further payment against a fully-paid booking is correctly
+rejected as "exceeds the remaining balance due (0.00)."
+
+**4. `QuotesController.decide()` bypassed all input validation.** Found
+while re-testing fix #2: the endpoint's body was typed as a plain inline
+TypeScript object literal (`{ decision: "APPROVED" | "REJECTED"; reason?:
+string }`) rather than a class. NestJS's global `ValidationPipe` — active
+and enforced (`whitelist: true, forbidNonWhitelisted: true`) on every other
+endpoint in this codebase — only validates class-typed bodies, so this one
+endpoint silently skipped it: a malformed request reached Prisma raw and
+surfaced as an ugly 500 (`Argument decision is missing`) instead of a clean
+400. Added `DecideQuoteDto` with `@IsIn(["APPROVED", "REJECTED"])`, matching
+every other mutating endpoint's existing DTO-class convention. Confirmed
+live: the same malformed body that previously 500'd now returns a proper
+`400` naming exactly what's wrong.
+
+**5. Several consequential actions failed silently in the UI.** A pass
+across every `useMutation` in `apps/web` found a handful where a rejected
+mutation showed nothing at all — the button just stopped spinning, with no
+indication anything went wrong. For record-keeping and lead-generation
+actions specifically, that's a real "did it work?" gap, not cosmetic.
+Added error display to: `BookingPanel`'s record-payment form (the
+overpayment guard above would otherwise fail silently); `ProposalPage`'s
+accept/request-changes buttons, which also now refetch on error so a
+losing "already accepted" race (client double-click, two open tabs)
+self-heals into the correct "🎉 Accepted" state instead of leaving the
+visitor stuck looking at a form for something that, in fact, already went
+through; `ReviewsPanel`'s publish/reject/reply actions; the admin owner-
+reassignment dropdown on the request detail page; and the CRM inbox's
+"create enquiry" form, where a silently-dropped lead would be the worst
+version of this bug. Verified the overpayment case renders correctly in a
+real browser screenshot, not just reasoned about.
+
 ## Visual design
 
 The app now has an actual brand identity instead of default Tailwind gray/

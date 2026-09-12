@@ -220,22 +220,38 @@ export class QuotesService {
     // discipline as PriceSnapshot) is created in the same transaction, so
     // acceptance always yields exactly one booking, never a dangling
     // ACCEPTED quote with nothing behind it.
-    await this.prisma.$transaction([
-      this.prisma.priceSnapshot.create({
+    //
+    // The status check above (outside the transaction) is only a
+    // fast-path rejection — it can't stop two concurrent accept() calls
+    // (a double-click, a client retry) from both reading SENT before
+    // either commits. The real guard is this conditional updateMany as
+    // the transaction's first statement: it can only ever flip exactly
+    // one caller's row from SENT, so a second concurrent caller sees
+    // count 0 and gets a clean "already accepted" error instead of a raw
+    // unique-constraint 500 from a duplicate Booking/PriceSnapshot.
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.quote.updateMany({
+        where: { id: link.quoteId, status: QuoteStatus.SENT },
+        data: { status: QuoteStatus.ACCEPTED },
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException("This proposal has already been accepted.");
+      }
+
+      await tx.priceSnapshot.create({
         data: {
           quoteId: link.quoteId,
           breakdown: latestVersion.breakdown as any,
           totalPrice: latestVersion.totalPrice,
           currency: link.quote.currency,
         },
-      }),
-      this.prisma.quote.update({ where: { id: link.quoteId }, data: { status: QuoteStatus.ACCEPTED } }),
-      this.prisma.proposalLink.update({ where: { token }, data: { acceptedAt: new Date() } }),
-      this.prisma.enquiryRequest.update({
+      });
+      await tx.proposalLink.update({ where: { token }, data: { acceptedAt: new Date() } });
+      await tx.enquiryRequest.update({
         where: { id: link.quote.requestId },
         data: { stage: RequestStage.BOOKED, pipelineLog: { create: [{ stage: RequestStage.BOOKED, note: "Client accepted proposal" }] } },
-      }),
-      this.prisma.booking.create({
+      });
+      await tx.booking.create({
         data: {
           organizationId: link.quote.request.organizationId,
           requestId: link.quote.requestId,
@@ -259,8 +275,8 @@ export class QuotesService {
             },
           },
         },
-      }),
-    ]);
+      });
+    });
 
     await this.audit.record({
       organizationId: link.quote.request.organizationId,
@@ -280,7 +296,15 @@ export class QuotesService {
     if (!link) throw new NotFoundException("Proposal not found");
     if (link.quote.status !== QuoteStatus.SENT) throw new BadRequestException(`Cannot request changes on a quote in status ${link.quote.status}`);
 
-    await this.prisma.quote.update({ where: { id: link.quoteId }, data: { status: QuoteStatus.CHANGES_REQUESTED } });
+    // Same concurrent-request guard as accept() — a conditional updateMany
+    // so two simultaneous "request changes" clicks can't both proceed.
+    const claimed = await this.prisma.quote.updateMany({
+      where: { id: link.quoteId, status: QuoteStatus.SENT },
+      data: { status: QuoteStatus.CHANGES_REQUESTED },
+    });
+    if (claimed.count !== 1) {
+      throw new BadRequestException("This proposal has already been actioned.");
+    }
     await this.prisma.enquiryRequest.update({
       where: { id: link.quote.requestId },
       data: { stage: RequestStage.NEGOTIATING, pipelineLog: { create: [{ stage: RequestStage.NEGOTIATING, note: note ?? "Client requested changes" }] } },

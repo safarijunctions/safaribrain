@@ -102,6 +102,7 @@ export function RequestDetailPage() {
               ) : (
                 <p>{request.owner?.fullName ?? "Unassigned"}</p>
               )}
+              {setOwner.isError && <p className="text-xs text-red-600 mt-1">{(setOwner.error as Error).message}</p>}
             </div>
           </div>
           {request.notes && <p className="text-sm mt-4 text-stone-700 italic">"{request.notes}"</p>}

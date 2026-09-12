@@ -48,6 +48,9 @@ export function ReviewsPanel() {
       </div>
 
       {isLoading && <p className="text-sm text-stone-500">Loading…</p>}
+      {(moderate.isError || reply.isError) && (
+        <p className="text-sm text-red-600">{((moderate.error ?? reply.error) as Error).message}</p>
+      )}
 
       <div className="space-y-3">
         {data?.map((r) => (

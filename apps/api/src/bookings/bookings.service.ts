@@ -76,6 +76,15 @@ export class BookingsService {
     const booking = await this.getOwned(organizationId, bookingId);
     if (booking.status === BookingStatus.CANCELLED) throw new BadRequestException("Cannot record a payment on a cancelled booking");
 
+    // A payment is a consequential, financial write — reject an amount
+    // that would overpay the booking rather than silently accepting a
+    // fat-fingered figure and leaving the receipt/e-ticket PDFs showing a
+    // nonsensical negative balance due.
+    const balanceDue = Number(booking.totalPrice) - Number(booking.amountPaid);
+    if (dto.amount > balanceDue) {
+      throw new BadRequestException(`Amount exceeds the remaining balance due (${booking.currency} ${balanceDue.toFixed(2)}).`);
+    }
+
     const payment = await this.prisma.payment.create({
       data: {
         bookingId: booking.id,

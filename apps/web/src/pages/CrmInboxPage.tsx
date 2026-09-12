@@ -150,6 +150,7 @@ function NewEnquiryForm({ onCreated }: { onCreated: () => void }) {
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
         />
       </div>
+      {create.isError && <p className="sm:col-span-2 text-sm text-red-600">{(create.error as Error).message}</p>}
       <div className="sm:col-span-2 flex justify-end">
         <button
           type="submit"

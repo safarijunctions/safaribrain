@@ -417,6 +417,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
                   ✕
                 </button>
               </div>
+              {recordPayment.isError && <p className="col-span-2 sm:col-span-4 text-red-600">{(recordPayment.error as Error).message}</p>}
             </div>
           ))}
       </div>

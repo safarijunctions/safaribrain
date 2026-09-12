@@ -8,6 +8,7 @@ import { JwtPayload } from "../auth/jwt.strategy";
 import { QuotesService } from "./quotes.service";
 import { CreateQuoteDto } from "./dto/create-quote.dto";
 import { ReviseQuoteDto } from "./dto/revise-quote.dto";
+import { DecideQuoteDto } from "./dto/decide-quote.dto";
 
 @Controller("quotes")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -33,12 +34,8 @@ export class QuotesController {
   // an Operator who authored the quote should not also be the one approving it.
   @Post(":id/decide")
   @RequirePermission(Permission.APPROVE_QUOTE)
-  decide(
-    @CurrentUser() user: JwtPayload,
-    @Param("id") id: string,
-    @Body() body: { decision: "APPROVED" | "REJECTED"; reason?: string },
-  ) {
-    return this.quotes.decide(user.organizationId, user.sub, id, body.decision, body.reason);
+  decide(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: DecideQuoteDto) {
+    return this.quotes.decide(user.organizationId, user.sub, id, dto.decision, dto.reason);
   }
 
   @Post(":id/send")
