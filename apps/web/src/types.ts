@@ -161,6 +161,14 @@ export interface AiItineraryDraft {
   requestedBy?: { id: string; fullName: string } | null;
 }
 
+export interface ReplyDraftJob {
+  id: string;
+  status: "DRAFTED" | "APPROVED" | "REJECTED";
+  output: { replyText: string };
+  createdAt: string;
+  requestedBy?: { id: string; fullName: string } | null;
+}
+
 export interface MarketplaceListingSummary {
   id: string;
   title: string;

@@ -147,6 +147,15 @@ simultaneous hold requests for one seat, exactly one wins.
     reference number or decline it; either way the status updates
     immediately, independent of whether the booking itself is paid.
 
+### AI reply drafting
+
+21. Open any enquiry's request page and find the "AI reply assistant" card
+    — click "Draft AI reply" (needs an `LLM_PROVIDER` integration
+    configured first, same as AI Drafts below). Edit the drafted text
+    freely, then "Approve & copy" — it copies your edited version to the
+    clipboard and logs it on the enquiry's activity trail, ready to paste
+    into WhatsApp or email. "Discard" throws the draft away instead.
+
 ## Admin Portal
 
 Sign in as **admin** and open the "Admin" link in the header:

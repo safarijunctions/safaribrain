@@ -487,6 +487,58 @@ correctly in both directions; confirmed the public `/booking/:token` JSON
 never includes `vehicle`, `guideName`, or `supplierConfirmations` at any
 point in this flow.
 
+## What's built: AI reply drafting (second `AiJobKind`, Phase 4 continued)
+
+The second real feature on the `AiJob` governance pattern introduced for
+itinerary drafting (§9) — an operator can now have an AI draft a first-reply
+message for a new enquiry, directly from the request detail page's new "AI
+reply assistant" card.
+
+`AiJobsService.draftReply` builds a prompt from the enquiry's own contact
+name, party size, stated interests, budget tier, and notes, calls
+`LlmService` the same way itinerary drafting does, and writes an `AiJob`
+row (`kind: REPLY_DRAFT`, `status: DRAFTED`) — nothing is sent or logged
+anywhere yet. `AiJob` gained a nullable `requestId` FK for this: itinerary
+drafts aren't tied to any one enquiry, but a reply draft always is, and the
+request detail page needs to list only its own drafts.
+
+Unlike the itinerary drafter, this one isn't gated by `MANAGE_CONTENT` —
+drafting a reply doesn't create catalog content or touch money, so it only
+requires the same authenticated-org-member access every other CRM action
+(adding a traveler, recording a payment) already uses. It lives in its own
+`ReplyDraftsController` at `ai/reply-drafts` for exactly that reason, next
+to but separate from `AiJobsController`.
+
+**The human-approval non-negotiable, extended to this feature specifically:**
+`approveReply` never uses `job.output.replyText` (the AI's raw draft) — it
+takes the text from the submitted `ApproveReplyDto`, so an operator's edits
+before sending are what actually gets recorded, the same
+submitted-payload-over-stored-output pattern `approveItinerary` established.
+Approval writes a `PipelineEvent` at the request's *current* stage rather
+than forcing a stage transition — approving a reply is an activity-trail
+entry, not a pipeline move — and the UI's "Approve & copy" button copies
+that exact edited text to the clipboard in the same action, since no
+messaging integration is live yet to actually send it (§11, same reasoning
+as the deferred WhatsApp channel).
+
+**Verified end-to-end:** the not-configured path (no LLM integration) gives
+a clear 400, confirmed live; adding a real-shaped but intentionally invalid
+`LLM_PROVIDER` credential and drafting a reply confirmed the request
+actually reaches `api.anthropic.com` and Anthropic's own
+`401 authentication_error` surfaces correctly in the UI rather than
+crashing — same discipline as the itinerary drafter, and for the same
+reason (no real Anthropic key available in this environment). The
+approve/reject paths themselves don't depend on a live completion, so they
+were driven for real: seeded a synthetic `DRAFTED` job directly, approved
+it with edited text different from the stored `output`, and confirmed the
+resulting `PipelineEvent.note` contains the edited text (not the original
+draft), the request's `stage` was untouched, a second approval attempt on
+the same job is rejected, and a separate job rejected via "Discard" cannot
+later be approved. Also confirmed cross-kind isolation: an `ITINERARY_DRAFT`
+job's id returns 404 through the `reply-drafts` reject route, and vice
+versa — `reject()` now takes an explicit `AiJobKind` rather than assuming
+one, so the two features can't accidentally act on each other's jobs.
+
 ## Visual design
 
 The app now has an actual brand identity instead of default Tailwind gray/
@@ -582,12 +634,14 @@ reassignments. Admin visibility doesn't mean admin invisibility.
   below); SOS/medevac specifically needs a real dispatch-partner
   integration (e.g. AMREF Flying Doctors) to be more than a UI mockup, so
   it's deferred until that partnership exists rather than half-built.
-- **Trade portal, deeper Phase 4 automation (translation, fee extraction,
-  proposal rewrite, news summary — the other `AiJobKind` values beyond
-  `ITINERARY_DRAFT`), super-app/native app** — Phase 3's marketplace and
-  Phase 4's AI-governance pattern now both have a first real slice (see
-  above); these are the remaining pieces of those same phases, deferred to
-  keep this batch reviewable rather than because anything blocks them.
+- **Trade portal, remaining Phase 4 automation (translation, fee
+  extraction, news summary — the other `AiJobKind` values; `REPLY_DRAFT` is
+  now built, see below), super-app/native app** — Phase 3's marketplace and
+  Phase 4's AI-governance pattern now have two real slices; these are the
+  remaining pieces of those same phases. `TRANSLATION` and `FEE_EXTRACTION`
+  specifically would need either a chosen target-locale content model or a
+  real external data source to fetch from — neither is a network-access
+  problem like payments, just scope deferred to keep each batch reviewable.
 
 ### A note on network access (why the payment gateway wasn't attempted)
 

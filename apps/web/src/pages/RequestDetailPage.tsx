@@ -7,6 +7,7 @@ import { EnquiryRequestDetail, TourTemplateSummary, TourTemplateDetail, Quote, O
 import { QuoteBuilder } from "../components/QuoteBuilder";
 import { QuoteCard } from "../components/QuoteCard";
 import { BookingPanel } from "../components/BookingPanel";
+import { ReplyDraftPanel } from "../components/ReplyDraftPanel";
 
 export function RequestDetailPage() {
   const { requestId } = useParams({ strict: false }) as { requestId: string };
@@ -167,6 +168,11 @@ export function RequestDetailPage() {
       </div>
 
       <div className="space-y-6">
+        <section className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm shadow-clay-900/5">
+          <h2 className="font-display font-semibold text-clay-800 mb-3">AI reply assistant</h2>
+          <ReplyDraftPanel requestId={request.id} />
+        </section>
+
         <section className="bg-white border border-stone-200 rounded-xl p-5 shadow-sm shadow-clay-900/5">
           <h2 className="font-display font-semibold text-clay-800 mb-3">Tasks</h2>
           <ul className="space-y-2 text-sm">

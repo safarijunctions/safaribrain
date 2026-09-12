@@ -1,10 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { AiJobApprovalStatus, AiJobKind } from "@safaribrain/shared";
+import { AiJobApprovalStatus, AiJobKind, RequestStage } from "@safaribrain/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { LlmService } from "./llm.service";
 import { DraftItineraryDto } from "./dto/draft-itinerary.dto";
 import { ApproveItineraryDto } from "./dto/approve-itinerary.dto";
+import { DraftReplyDto } from "./dto/draft-reply.dto";
+import { ApproveReplyDto } from "./dto/approve-reply.dto";
 
 const MEAL_VALUES = new Set(["BREAKFAST", "LUNCH", "DINNER"]);
 
@@ -90,15 +92,79 @@ export class AiJobsService {
     return { job: updated, template };
   }
 
-  async reject(organizationId: string, actorId: string | undefined, jobId: string) {
-    const job = await this.getOwned(organizationId, jobId, AiJobKind.ITINERARY_DRAFT);
+  async reject(organizationId: string, actorId: string | undefined, jobId: string, kind: AiJobKind) {
+    const job = await this.getOwned(organizationId, jobId, kind);
     if (job.status !== AiJobApprovalStatus.DRAFTED) throw new BadRequestException(`This draft is already ${job.status.toLowerCase()}`);
     const updated = await this.prisma.aiJob.update({
       where: { id: job.id },
       data: { status: AiJobApprovalStatus.REJECTED, decidedById: actorId, decidedAt: new Date() },
     });
-    await this.audit.record({ organizationId, actorId, action: "ai.itinerary_draft.reject", entityType: "AiJob", entityId: job.id });
+    await this.audit.record({ organizationId, actorId, action: `ai.${kind.toLowerCase()}.reject`, entityType: "AiJob", entityId: job.id });
     return updated;
+  }
+
+  // A reply draft is a CRM/sales tool, not content-governance the way an
+  // itinerary draft is — no special permission gates it, same as adding a
+  // traveler or recording a payment on a booking. It's still governed the
+  // same way, though: drafting only ever writes an AiJob row, and nothing
+  // reaches the request's activity trail until a human approves the exact
+  // text (approveReply takes the submitted text, never job.output directly).
+  async draftReply(organizationId: string, actorId: string | undefined, dto: DraftReplyDto) {
+    const request = await this.prisma.enquiryRequest.findFirst({
+      where: { id: dto.requestId, organizationId },
+      include: { contact: true },
+    });
+    if (!request) throw new NotFoundException("Request not found");
+
+    const prompt = buildReplyPrompt(request);
+    const completion = await this.llm.complete(organizationId, prompt);
+
+    const job = await this.prisma.aiJob.create({
+      data: {
+        organizationId,
+        requestId: request.id,
+        kind: AiJobKind.REPLY_DRAFT,
+        status: AiJobApprovalStatus.DRAFTED,
+        prompt,
+        model: completion.model,
+        output: { replyText: completion.text.trim() },
+        requestedById: actorId,
+      },
+    });
+
+    await this.audit.record({ organizationId, actorId, action: "ai.reply_draft.create", entityType: "AiJob", entityId: job.id, metadata: { requestId: request.id, model: completion.model } });
+    return job;
+  }
+
+  listReplyDrafts(organizationId: string, requestId: string) {
+    return this.prisma.aiJob.findMany({
+      where: { organizationId, requestId, kind: AiJobKind.REPLY_DRAFT },
+      orderBy: { createdAt: "desc" },
+      include: { requestedBy: { select: { id: true, fullName: true } } },
+    });
+  }
+
+  async approveReply(organizationId: string, actorId: string | undefined, jobId: string, dto: ApproveReplyDto) {
+    const job = await this.getOwned(organizationId, jobId, AiJobKind.REPLY_DRAFT);
+    if (job.status !== AiJobApprovalStatus.DRAFTED) throw new BadRequestException(`This draft is already ${job.status.toLowerCase()}`);
+    if (!job.requestId) throw new BadRequestException("This draft isn't linked to a request");
+
+    const request = await this.prisma.enquiryRequest.findFirst({ where: { id: job.requestId, organizationId } });
+    if (!request) throw new NotFoundException("Request not found");
+
+    // Logged at the request's current stage, not a stage change — approving
+    // a reply is an activity-trail entry, not a pipeline transition.
+    const event = await this.prisma.pipelineEvent.create({
+      data: { requestId: request.id, stage: request.stage as RequestStage, note: `AI-drafted reply approved and sent:\n${dto.replyText}` },
+    });
+
+    const updated = await this.prisma.aiJob.update({
+      where: { id: job.id },
+      data: { status: AiJobApprovalStatus.APPROVED, decidedById: actorId, decidedAt: new Date(), resultEntityType: "PipelineEvent", resultEntityId: event.id },
+    });
+
+    await this.audit.record({ organizationId, actorId, action: "ai.reply_draft.approve", entityType: "AiJob", entityId: job.id, metadata: { requestId: request.id, pipelineEventId: event.id } });
+    return { job: updated, pipelineEvent: event };
   }
 
   private async getOwned(organizationId: string, id: string, kind: AiJobKind) {
@@ -106,6 +172,24 @@ export class AiJobsService {
     if (!job) throw new NotFoundException("AI draft not found");
     return job;
   }
+}
+
+function buildReplyPrompt(request: { contact: { fullName: string }; partySize: number; interests: string[]; notes: string | null; budgetTier: string | null }): string {
+  return [
+    "You are drafting a warm, professional first-reply email on behalf of a Tanzania-based safari tour operator, Safari Junction's Adventures, to a new enquiry.",
+    `Traveler name: ${request.contact.fullName}`,
+    `Party size: ${request.partySize}`,
+    request.interests.length ? `Stated interests: ${request.interests.join(", ")}` : undefined,
+    request.budgetTier ? `Budget tier: ${request.budgetTier}` : undefined,
+    request.notes ? `Enquiry notes: "${request.notes}"` : undefined,
+    "",
+    "Write only the reply message body (no subject line, no signature block beyond a friendly sign-off with the company name).",
+    "Thank them for reaching out, acknowledge what they're looking for, and let them know a detailed, tailored itinerary and quote will follow shortly.",
+    "Do not invent specific prices, dates, or itinerary details you don't have.",
+    "Keep it to 3-5 short paragraphs.",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function buildItineraryPrompt(brief: string, durationDays: number): string {

@@ -34,6 +34,6 @@ export class AiJobsController {
 
   @Post(":id/reject")
   reject(@CurrentUser() user: JwtPayload, @Param("id") id: string) {
-    return this.aiJobs.reject(user.organizationId, user.sub, id);
+    return this.aiJobs.reject(user.organizationId, user.sub, id, AiJobKind.ITINERARY_DRAFT);
   }
 }

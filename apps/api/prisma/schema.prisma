@@ -169,6 +169,7 @@ model EnquiryRequest {
   tasks        Task[]
   pipelineLog  PipelineEvent[]
   bookings     Booking[]
+  aiJobs       AiJob[]
 
   @@index([organizationId, stage])
   @@map("enquiry_requests")
@@ -740,11 +741,15 @@ model AiJob {
   decidedAt     DateTime?
   resultEntityType String? // what approving this created, e.g. "TourTemplate"
   resultEntityId    String?
+  // Which enquiry this job is for — only set for request-scoped kinds like
+  // REPLY_DRAFT; ITINERARY_DRAFT isn't tied to any one request.
+  requestId     String?
   createdAt     DateTime            @default(now())
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  requestedBy  User?        @relation("AiJobRequestedBy", fields: [requestedById], references: [id])
-  decidedBy    User?        @relation("AiJobDecidedBy", fields: [decidedById], references: [id])
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedBy  User?           @relation("AiJobRequestedBy", fields: [requestedById], references: [id])
+  decidedBy    User?           @relation("AiJobDecidedBy", fields: [decidedById], references: [id])
+  request      EnquiryRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
   @@index([organizationId, kind, status])
   @@map("ai_jobs")
