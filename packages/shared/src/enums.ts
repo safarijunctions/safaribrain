@@ -11,6 +11,34 @@ export enum UserRole {
   ADMIN = "ADMIN",
 }
 
+// Which kind of tourism-professional Organization this is — a company
+// running its own trips, a solo guide selling their own itineraries
+// directly, or a travel agent/agency reselling other orgs' inventory via
+// the Trade marketplace. See schema.prisma's Organization model comment
+// for why a guide/agent is modeled as an Organization, not a new concept.
+export enum OrganizationKind {
+  OPERATOR = "OPERATOR",
+  GUIDE = "GUIDE",
+  AGENT = "AGENT",
+}
+
+export enum BookingChannel {
+  RETAIL = "RETAIL",
+  TRADE = "TRADE",
+}
+
+export enum RentalListingVisibility {
+  LISTED = "LISTED",
+  UNLISTED = "UNLISTED",
+}
+
+export enum RentalAgreementStatus {
+  PENDING = "PENDING",
+  ACCEPTED = "ACCEPTED",
+  DECLINED = "DECLINED",
+  CANCELLED = "CANCELLED",
+}
+
 // Scoped permissions layered on top of role — §3 requires finance/safety
 // actions to require dual control rather than a single "Admin" flag.
 export enum Permission {

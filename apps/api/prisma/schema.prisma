@@ -36,9 +36,25 @@ enum UserRole {
   ADMIN
 }
 
+// A tourism-professional Organization is one of three kinds — a company
+// running its own trips (OPERATOR, the only kind that existed before this),
+// an individual freelance guide selling their own itineraries directly, or
+// a travel agent/agency who resells other orgs' inventory (Trade
+// marketplace). Modeling a guide/agent as an Organization rather than a
+// standalone concept is deliberate reuse: every existing org-scoped
+// feature (TourTemplate, Departure/Seat booking, Vehicle fleet, CRM,
+// marketplace listing, verification) works for a solo guide's one-person
+// "company" with zero new code.
+enum OrganizationKind {
+  OPERATOR
+  GUIDE
+  AGENT
+}
+
 model Organization {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   name      String
+  kind      OrganizationKind  @default(OPERATOR)
   country   String // ISO 3166-1 alpha-2, e.g. "TZ" — §1.7 country is config, not a rebuild
   currency  String // ISO 4217, e.g. "TZS"
   verified  Boolean  @default(false) // Trust domain (§6) collapsed onto the org for Phase 0/1
@@ -52,11 +68,18 @@ model Organization {
   places        Place[]
   integrations  Integration[]
   bookings      Booking[]
+  agentBookings Booking[] @relation("AgentBooking")
   aiJobs        AiJob[]
   departures    Departure[]
   reviews       Review[]
   vehicles      Vehicle[]
   supplierConfirmations SupplierConfirmation[]
+  vehicleRentalListings   VehicleRentalListing[]
+  rentalAgreementsAsOwner VehicleRentalAgreement[] @relation("RentalOwner")
+  rentalAgreementsAsRenter VehicleRentalAgreement[] @relation("RentalRenter")
+  conversationsA Conversation[] @relation("ConversationOrgA")
+  conversationsB Conversation[] @relation("ConversationOrgB")
+  messages       Message[]
 
   @@map("organizations")
 }
@@ -434,6 +457,11 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum BookingChannel {
+  RETAIL
+  TRADE
+}
+
 model Booking {
   id             String        @id @default(cuid())
   organizationId String
@@ -447,6 +475,16 @@ model Booking {
   currency       String
   totalPrice     Decimal       @db.Decimal(12, 2)
   amountPaid     Decimal       @db.Decimal(12, 2) @default(0)
+  // Trade marketplace: a TRADE booking was made by another organization's
+  // agent buying seats on this departure at netPricePerSeat on behalf of
+  // their own end client, rather than the traveler booking directly.
+  // `retailTotalPrice` snapshots what the same seats would have cost at
+  // the departure's public price at booking time, so the agent's margin
+  // (retailTotalPrice - totalPrice) is knowable later even after the
+  // departure's own prices change.
+  channel             BookingChannel @default(RETAIL)
+  agentOrganizationId String?
+  retailTotalPrice    Decimal?       @db.Decimal(12, 2)
   // The e-ticket/QR and the public trip-status page both key off this
   // token rather than the booking's own id, same pattern as ProposalLink.
   ticketToken    String        @unique @default(cuid())
@@ -463,6 +501,7 @@ model Booking {
   updatedAt      DateTime      @updatedAt
 
   organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentOrganization Organization?      @relation("AgentBooking", fields: [agentOrganizationId], references: [id])
   request       EnquiryRequest         @relation(fields: [requestId], references: [id])
   quote         Quote?                 @relation(fields: [quoteId], references: [id])
   departure     Departure?             @relation(fields: [departureId], references: [id])
@@ -505,8 +544,116 @@ model Vehicle {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   bookings     Booking[]
+  rentalListing VehicleRentalListing?
 
   @@map("vehicles")
+}
+
+// ---------------------------------------------------------------------------
+// Vehicle rental exchange (§6 Trade) — an owner org publishes a fleet
+// vehicle as rentable by other organizations (another operator short a
+// vehicle, a guide who owns no vehicle, an agent assembling a package),
+// under a per-rental agreement rather than an instant "book now" — vehicle
+// hire in this business is a negotiated commercial arrangement (deposit,
+// driver, fuel/mileage terms), not a fixed retail price like a seat.
+// ---------------------------------------------------------------------------
+
+// UNLISTED keeps a vehicle out of the shared exchange browse list entirely
+// — the owner can still hand a specific renter the listing id directly
+// (a "private network" arrangement) without building a separate ACL.
+enum RentalListingVisibility {
+  LISTED
+  UNLISTED
+}
+
+model VehicleRentalListing {
+  id             String                  @id @default(cuid())
+  organizationId String
+  vehicleId      String                  @unique // one active listing per vehicle, keeps availability unambiguous
+  dailyRate      Decimal                 @db.Decimal(12, 2)
+  currency       String
+  visibility     RentalListingVisibility @default(LISTED)
+  notes          String?
+  active         Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  agreements   VehicleRentalAgreement[]
+
+  @@map("vehicle_rental_listings")
+}
+
+enum RentalAgreementStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
+model VehicleRentalAgreement {
+  id                 String                 @id @default(cuid())
+  listingId          String
+  ownerOrganizationId  String // denormalized from listing at request time so ownership survives a listing edit
+  renterOrganizationId String
+  startDate          DateTime
+  endDate            DateTime
+  dailyRate          Decimal                @db.Decimal(12, 2) // snapshot from the listing at request time
+  totalPrice         Decimal                @db.Decimal(12, 2)
+  currency           String
+  message            String?
+  status             RentalAgreementStatus  @default(PENDING)
+  respondedAt        DateTime?
+  createdAt          DateTime               @default(now())
+
+  listing          VehicleRentalListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  ownerOrganization  Organization       @relation("RentalOwner", fields: [ownerOrganizationId], references: [id])
+  renterOrganization Organization       @relation("RentalRenter", fields: [renterOrganizationId], references: [id])
+
+  @@map("vehicle_rental_agreements")
+}
+
+// ---------------------------------------------------------------------------
+// Org-to-org messaging (§6 Trade "chat like a WhatsApp group... knowing
+// each other") — deliberately B2B only: an operator, guide, agent, or
+// vehicle owner messaging another organization they're trading with.
+// Traveler-facing chat is explicitly NOT built here — travelers have no
+// platform account at all in this system (public tokenized links only,
+// §5), so a "safari group chat" for them would need a traveler identity
+// model built first; see ARCHITECTURE.md "Deliberately not built yet".
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id String @id @default(cuid())
+  // Unordered pair of organizations, normalized (orgAId < orgBId as
+  // strings) at creation time so "start a conversation" is idempotent —
+  // reuses the existing thread instead of creating a duplicate one.
+  organizationAId String
+  organizationBId String
+  createdAt       DateTime @default(now())
+
+  organizationA Organization @relation("ConversationOrgA", fields: [organizationAId], references: [id], onDelete: Cascade)
+  organizationB Organization @relation("ConversationOrgB", fields: [organizationBId], references: [id], onDelete: Cascade)
+  messages      Message[]
+
+  @@unique([organizationAId, organizationBId])
+  @@map("conversations")
+}
+
+model Message {
+  id                String   @id @default(cuid())
+  conversationId    String
+  senderOrganizationId String
+  senderUserId      String?
+  body              String
+  createdAt         DateTime @default(now())
+
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderOrganization Organization @relation(fields: [senderOrganizationId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
 }
 
 // ---------------------------------------------------------------------------
@@ -566,6 +713,15 @@ model Departure {
   pricePerSeat   Decimal         @db.Decimal(12, 2)
   totalSeats     Int
   status         DepartureStatus @default(OPEN)
+  // Trade/wholesale marketplace (§6 Trade, operator/guide/agent B2B): a
+  // departure only appears to other organizations' agents once the owning
+  // org opts it in (tradeVisible) and sets a net seat price lower than
+  // pricePerSeat — same "off by default, deliberate opt-in" pattern as
+  // TourTemplate.publiclyListed. Seats themselves are a single shared pool
+  // — a seat sold via the trade channel is the exact same Seat row as one
+  // sold retail, so there is no separate "trade inventory" to double-book.
+  netPricePerSeat Decimal?       @db.Decimal(12, 2)
+  tradeVisible    Boolean        @default(false)
   createdAt      DateTime        @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

@@ -125,6 +125,8 @@ export interface Departure {
   totalSeats: number;
   status: "OPEN" | "CLOSED" | "CANCELLED";
   seats: DepartureSeatSummary[];
+  netPricePerSeat?: string | null;
+  tradeVisible?: boolean;
 }
 
 export interface PublicDeparture {
@@ -360,6 +362,78 @@ export interface ReviewSummary {
   average: number | null;
   count: number;
   reviews: PublishedReview[];
+}
+
+export interface TradeDeparture {
+  id: string;
+  departureDate: string;
+  currency: string;
+  pricePerSeat: string;
+  netPricePerSeat?: string | null;
+  tradeVisible: boolean;
+  totalSeats: number;
+  status: "OPEN" | "CLOSED" | "CANCELLED";
+  tourTemplate: { title: string; durationDays: number; organization: { name: string; country: string } };
+  seats?: DepartureSeatSummary[];
+}
+
+export interface TradeBooking {
+  id: string;
+  totalPrice: string;
+  retailTotalPrice?: string | null;
+  currency: string;
+  status: string;
+  createdAt: string;
+  organization: { name: string; country: string };
+  departure?: { departureDate: string; tourTemplate: { title: string } } | null;
+  travelers: Traveler[];
+}
+
+export interface TradeOrganization {
+  id: string;
+  name: string;
+  kind: "OPERATOR" | "GUIDE" | "AGENT";
+  country: string;
+}
+
+export interface RentalListing {
+  id: string;
+  dailyRate: string;
+  currency: string;
+  visibility: "LISTED" | "UNLISTED";
+  active: boolean;
+  notes?: string | null;
+  vehicle: Vehicle;
+  organization?: { name: string; country: string };
+}
+
+export interface RentalAgreement {
+  id: string;
+  ownerOrganizationId: string;
+  renterOrganizationId: string;
+  startDate: string;
+  endDate: string;
+  dailyRate: string;
+  totalPrice: string;
+  currency: string;
+  message?: string | null;
+  status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED";
+  listing: { vehicle: Vehicle };
+  ownerOrganization: { name: string };
+  renterOrganization: { name: string };
+}
+
+export interface ConversationSummary {
+  id: string;
+  counterpart: { id: string; name: string; kind: string };
+  lastMessage: { body: string; createdAt: string } | null;
+}
+
+export interface Message {
+  id: string;
+  senderOrganizationId: string;
+  body: string;
+  createdAt: string;
 }
 
 export interface ModerationReview {

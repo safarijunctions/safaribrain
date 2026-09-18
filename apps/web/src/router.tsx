@@ -1,5 +1,9 @@
 import { createRootRoute, createRoute, createRouter, Outlet, Navigate } from "@tanstack/react-router";
 import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { TradePage } from "./pages/TradePage";
+import { VehicleExchangePage } from "./pages/VehicleExchangePage";
+import { MessagesPage } from "./pages/MessagesPage";
 import { CrmInboxPage } from "./pages/CrmInboxPage";
 import { RequestDetailPage } from "./pages/RequestDetailPage";
 import { ProposalPage } from "./pages/ProposalPage";
@@ -27,6 +31,12 @@ const loginRoute = createRoute({
   component: LoginPage,
 });
 
+const registerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/register",
+  component: RegisterPage,
+});
+
 const appLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app-layout",
@@ -52,6 +62,28 @@ const adminRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/admin",
   component: AdminPage,
+});
+
+// §6 Trade — any authenticated organization (operator, guide, or agent),
+// not admin-only: a solo guide has no separate "admin" account to log in
+// as, so these live at the top level of the authenticated app, same as
+// /crm.
+const tradeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/trade",
+  component: TradePage,
+});
+
+const vehicleExchangeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/vehicle-exchange",
+  component: VehicleExchangePage,
+});
+
+const messagesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/messages",
+  component: MessagesPage,
 });
 
 // Public — no auth, per §5 "mobile, low-bandwidth, WhatsApp-first". A client
@@ -97,7 +129,8 @@ const departureSeatMapRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
-  appLayoutRoute.addChildren([crmInboxRoute, requestDetailRoute, adminRoute]),
+  registerRoute,
+  appLayoutRoute.addChildren([crmInboxRoute, requestDetailRoute, adminRoute, tradeRoute, vehicleExchangeRoute, messagesRoute]),
   proposalRoute,
   bookingStatusRoute,
   marketplaceRoute,

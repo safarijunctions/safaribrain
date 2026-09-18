@@ -14,9 +14,18 @@ export function AppShell() {
     <div className="min-h-screen flex flex-col">
       <header className="relative bg-gradient-to-r from-clay-800 via-clay-700 to-acacia-800 text-white px-4 sm:px-6 py-3.5 flex items-center justify-between shadow-sm gap-2">
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-sunset-400 via-sunset-300 to-acacia-400" />
-        <div className="flex items-center gap-3 sm:gap-6 min-w-0">
+        <div className="flex items-center gap-3 sm:gap-6 min-w-0 overflow-x-auto">
           <Link to="/crm" className="font-display font-semibold text-lg tracking-tight shrink-0">
             SafariBrain
+          </Link>
+          <Link to="/trade" className="text-sm text-white/80 hover:text-white transition [&.active]:text-white [&.active]:font-semibold shrink-0">
+            Trade
+          </Link>
+          <Link to="/vehicle-exchange" className="text-sm text-white/80 hover:text-white transition [&.active]:text-white [&.active]:font-semibold shrink-0">
+            Vehicles
+          </Link>
+          <Link to="/messages" className="text-sm text-white/80 hover:text-white transition [&.active]:text-white [&.active]:font-semibold shrink-0">
+            Messages
           </Link>
           {user?.role === "ADMIN" && (
             <Link

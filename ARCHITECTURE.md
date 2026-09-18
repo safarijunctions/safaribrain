@@ -685,6 +685,103 @@ non-admin gets 403 on each — and every action still writes its own
 `audit_log` entry, including the admin's own password resets and
 reassignments. Admin visibility doesn't mean admin invisibility.
 
+## What's built: the Trade network — guides, agents, wholesale, vehicle rental, B2B messaging
+
+The remaining piece of §6's domain list this build hadn't touched yet:
+"Trade" — plus turning `UserRole.GUIDE`/`AGENT` (scaffolded since Phase 0/1
+but never functional) into real account types. Four slices, one pass,
+each fully wired and verified rather than stubbed side by side.
+
+**Guides and agents join without an admin creating their account.**
+`Organization` gained a `kind` (`OPERATOR` | `GUIDE` | `AGENT`, default
+`OPERATOR` so every existing org is unaffected) and `POST /auth/register`
+(public, no auth) creates a new unverified org of that kind plus its
+owning `ADMIN` member with every permission — the same shape the seed
+script gives the first user of an org, since there's no one else yet to
+divide control with. This is deliberate reuse, not a new concept: a solo
+guide is an Organization with one member, so `TourTemplate`,
+`Departure`/`Seat` booking, `Vehicle` fleet, the CRM inbox, and public
+marketplace listing all work for them with zero new code once they're
+registered — a guide can already create and sell their own itinerary, and
+handle a custom-safari request through the same enquiry pipeline an
+operator uses, today, with nothing further to build. The new org starts
+unverified, the same trust gate the marketplace and every route below
+already checks.
+
+**Trade marketplace (wholesale seats on the same inventory, not a
+separate pool).** `Departure` gained `netPricePerSeat`/`tradeVisible`
+(off by default, same opt-in pattern as `publiclyListed`); a new
+`PATCH /departures/:id/trade` (staff, `MANAGE_CONTENT`) lets the owning
+org set a net price below its public price. `TradeController`
+(`/trade/...`, any authenticated org) lets another organization browse
+trade-visible departures cross-org, hold seats, and book on behalf of
+their own end client — reusing `DeparturesService.holdSeats` verbatim
+(a seat hold doesn't care which channel is buying it) and extending
+`confirmBooking` with an optional `{ agentOrganizationId, unitNetPrice }`
+so the *same* seat rows serve both channels with no separate "trade
+inventory" to double-book. `Booking` gained `channel`
+(`RETAIL`/`TRADE`), `agentOrganizationId`, and `retailTotalPrice` (a
+snapshot of what the seats would have cost at the public price, so an
+agent's margin stays knowable later even after the departure's own prices
+change) — the resulting lead still lands in the *selling* org's normal
+CRM pipeline, tagged as a trade booking, not a second-class queue.
+Guarded against booking your own departure through the trade channel
+(`BadRequestException`), confirmed live.
+
+**Vehicle rental exchange.** Two new models: `VehicleRentalListing` (one
+per `Vehicle`, `dailyRate`, `LISTED`/`UNLISTED` visibility) and
+`VehicleRentalAgreement` (`PENDING → ACCEPTED`/`DECLINED`, snapshotting
+the rate at request time). Deliberately not an instant "book now" like a
+seat — vehicle hire here is a negotiated arrangement the owner accepts or
+declines, per §6's "depends on agreements." `VehicleRentalsService.respond`
+re-checks for an overlapping `ACCEPTED` agreement on the same vehicle
+*inside* the accept transaction, not just at request time, since two
+renters can request overlapping dates and only one can actually be
+accepted — verified live: a second overlapping request against an
+already-accepted agreement is rejected with a clean 409, and the
+non-owner side gets a 403 trying to respond to someone else's listing.
+
+**Org-to-org messaging.** `Conversation` (an unordered, normalized pair of
+organizations — `(A,B)` and `(B,A)` always resolve to the same row, so
+"start a conversation" is idempotent) and `Message`. Deliberately **not**
+traveler-facing: this system has no traveler account anywhere (public
+tokenized links only, per §5), so a "safari group chat" for travelers
+would need a traveler identity model built first — that's new scope, not
+a gap in this pass, and is listed under "Deliberately not built" below.
+What's built is real B2B chat: an operator, guide, agent, or vehicle owner
+messaging another organization directly, verified live with a real
+two-way thread (guide → operator asking about a vehicle, operator
+replying, re-opening the same thread reusing the same conversation id).
+
+**Verified end-to-end, not just built:** ran the full chain over a live
+API and a real Postgres — set trade pricing on a departure, registered a
+new `AGENT` org, confirmed its trade-departure list is empty until the
+selling org is verified then appears once it is, held and booked seats at
+the net price (retail 500 vs. net 350, margin computed correctly),
+confirmed an org can't book its own departure through the trade channel;
+created a vehicle, listed it for rent, registered a new `GUIDE` org,
+requested a rental, confirmed the owner sees it and can accept it,
+confirmed a second overlapping request is rejected on accept (409) and a
+non-owner responding gets 403; started a conversation, replied, confirmed
+idempotent re-opening and full thread history. Then repeated the guide
+registration → browse trade departures → hold → fill end-client details
+→ book, the vehicle-rental request, and the messaging send, **through a
+real Chromium browser session** (Playwright) against the actual running
+web app — not just the API — confirming the UI renders correctly and the
+resulting rows land in Postgres exactly as the API-level test predicted.
+`pnpm build` (shared package, API, and web) is clean.
+
+**Web**: `RegisterPage` (role picker: Operator/Guide/Agent), a `/trade`
+page (browse net-priced departures, seat-map hold/book, "my trade
+bookings" with margin shown), a `/vehicle-exchange` page (browse, list
+your own vehicles, respond to agreements — Accept/Decline only rendered
+for the owning org, since the API would 403 the other side anyway), and a
+`/messages` page (conversation list + a real chat thread UI). All three
+are top-level nav items for any authenticated org, not admin-only — a
+solo guide has no separate "admin" persona to switch into. The existing
+Admin → Marketplace tab gained an inline "opt into trade" control per
+departure.
+
 ## Deliberately not built yet (with why)
 
 - **WhatsApp Business API channel** (§4.1/§5/Phase 1 scope item) — needs a
@@ -713,14 +810,52 @@ reassignments. Admin visibility doesn't mean admin invisibility.
   below); SOS/medevac specifically needs a real dispatch-partner
   integration (e.g. AMREF Flying Doctors) to be more than a UI mockup, so
   it's deferred until that partnership exists rather than half-built.
-- **Trade portal, remaining Phase 4 automation (translation, fee
-  extraction, news summary — the other `AiJobKind` values; `REPLY_DRAFT` is
-  now built, see below), super-app/native app** — Phase 3's marketplace and
-  Phase 4's AI-governance pattern now have two real slices; these are the
-  remaining pieces of those same phases. `TRANSLATION` and `FEE_EXTRACTION`
+- **Remaining Phase 4 automation (translation, fee extraction, news
+  summary — the other `AiJobKind` values; `REPLY_DRAFT` is now built, see
+  below), super-app/native app** — Phase 3's marketplace and Phase 4's
+  AI-governance pattern now have two real slices; these are the remaining
+  pieces of those same phases. `TRANSLATION` and `FEE_EXTRACTION`
   specifically would need either a chosen target-locale content model or a
   real external data source to fetch from — neither is a network-access
   problem like payments, just scope deferred to keep each batch reviewable.
+  (The Trade portal itself — guides, agents, wholesale departures, vehicle
+  rental, B2B messaging — is now built; see the section above.)
+- **Traveler-facing "safari group chat"** — the org-to-org messaging built
+  above is deliberately B2B only. A per-departure group chat that also
+  includes the travelers themselves (as the master brief's Trade section
+  envisions) needs a traveler identity to attach messages to, and this
+  system has none anywhere: every traveler-facing surface is a public,
+  tokenized link (`ProposalLink`, `Booking.ticketToken`), not an account.
+  Building that chat on top of the anonymous-token model would mean either
+  a fake identity per link (can't tell two travelers apart in the same
+  group) or building real traveler accounts first — a genuinely new piece
+  of identity scope, not a messaging one, so it's deferred rather than
+  faked.
+- **Seat allocations/reservations for a specific trade partner, and
+  "release unused trade seats back to public automatically"** — the Trade
+  marketplace built above shares one pool of seats across retail and
+  trade (a seat sold either way is the same row), which already prevents
+  overbooking, but there's no concept yet of reserving a block of seats
+  for one named agent (§6's "agency allocation") or an automatic
+  time-based release rule. An operator can already replicate "release to
+  public" manually today by turning `tradeVisible` back off, so this is a
+  convenience feature layered on working inventory, not a correctness gap.
+- **Vehicle attached directly to a Departure (fleet planning ahead of a
+  booking)** — vehicle assignment today happens per-`Booking`
+  (`updateLogistics`, existing Phase 2 behavior) and, separately, a
+  `Vehicle` can now be rented in/out via the exchange above; there's no
+  field yet for "this Departure's vehicle" independent of any one
+  booking. Adding it is straightforward once there's a real scheduling UI
+  driving it, not attempted speculatively here.
+- **Airline-style seat *preference* (window/together/family grouping) as
+  an enforced allocation rule** — seats already carry a `SeatType`
+  (`WINDOW`/`AISLE`/`FRONT`/`ACCESSIBLE`) and a traveler already picks
+  specific seats on the existing seat map (both channels), but nothing
+  automatically keeps a multi-seat booking's seats adjacent — the
+  traveler/agent currently does that by eye on the seat map, same as
+  picking any other seat. A "keep this group together" placement rule is
+  a UX nicety on top of already-correct inventory, not a booking-safety
+  gap.
 
 ### A note on network access (why the payment gateway wasn't attempted)
 

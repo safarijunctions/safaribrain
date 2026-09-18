@@ -74,8 +74,25 @@ export class DeparturesService {
     return departure;
   }
 
+  // Shared by both channels: a seat is bookable through this shared
+  // mechanism as long as the owning org is verified and the departure is
+  // reachable through *some* sales channel (retail listing or trade
+  // opt-in) — which channel doesn't change how seat holds work, only how
+  // the resulting booking is priced and attributed.
+  private async assertBookable(departureId: string) {
+    const departure = await this.prisma.departure.findFirst({
+      where: {
+        id: departureId,
+        OR: [{ tourTemplate: { publiclyListed: true } }, { tradeVisible: true }],
+        tourTemplate: { organization: { verified: true } },
+      },
+    });
+    if (!departure) throw new NotFoundException("Departure not found");
+    return departure;
+  }
+
   async getSeatMap(departureId: string, viewerToken?: string) {
-    await this.getPublicDeparture(departureId);
+    await this.assertBookable(departureId);
     const seats = await this.prisma.seat.findMany({ where: { departureId }, orderBy: { label: "asc" } });
     const now = new Date();
     return seats.map((s) => ({
@@ -95,7 +112,7 @@ export class DeparturesService {
   // both believe they hold the seat — a DB-level guarantee, not an
   // application-level race that happens to usually work.
   async holdSeats(departureId: string, dto: HoldSeatsDto) {
-    await this.getPublicDeparture(departureId);
+    await this.assertBookable(departureId);
     const MAX_ATTEMPTS = 3;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
@@ -133,7 +150,56 @@ export class DeparturesService {
     throw new ConflictException("That seat was just taken by someone else — please try again.");
   }
 
-  async confirmBooking(departureId: string, dto: ConfirmSeatBookingDto) {
+  // Staff-side: an operator/guide opts an already-created departure into
+  // the Trade marketplace (§6) by setting a net seat price below its
+  // public pricePerSeat. Off by default (tradeVisible), same "deliberate
+  // opt-in" pattern as TourTemplate.publiclyListed — nothing is wholesale
+  // just because it exists.
+  async setTradePricing(organizationId: string, departureId: string, netPricePerSeat: number, tradeVisible: boolean) {
+    const departure = await this.prisma.departure.findFirst({ where: { id: departureId, organizationId } });
+    if (!departure) throw new NotFoundException("Departure not found");
+    if (tradeVisible && netPricePerSeat >= Number(departure.pricePerSeat)) {
+      throw new BadRequestException("The trade net price must be lower than the public price per seat");
+    }
+    return this.prisma.departure.update({ where: { id: departure.id }, data: { netPricePerSeat, tradeVisible } });
+  }
+
+  // Cross-organization, same reasoning as listPublicForTemplate/
+  // getPublicDeparture: scoped by tradeVisible + the owning org's
+  // verification, not by organizationId. Excludes the caller's own
+  // organization — an org can't be its own trade agent — and departures
+  // that are already sold out or in the past.
+  listTradeDepartures(excludeOrganizationId: string) {
+    return this.prisma.departure.findMany({
+      where: {
+        tradeVisible: true,
+        status: "OPEN",
+        departureDate: { gte: new Date() },
+        organizationId: { not: excludeOrganizationId },
+        tourTemplate: { organization: { verified: true } },
+      },
+      include: {
+        tourTemplate: { select: { title: true, durationDays: true, organization: { select: { name: true, country: true } } } },
+        seats: { select: { status: true, heldUntil: true } },
+      },
+      orderBy: { departureDate: "asc" },
+    });
+  }
+
+  async getTradeDeparture(departureId: string) {
+    const departure = await this.prisma.departure.findFirst({
+      where: { id: departureId, tradeVisible: true, status: "OPEN", tourTemplate: { organization: { verified: true } } },
+      include: { tourTemplate: { select: { title: true, durationDays: true, organization: { select: { name: true, country: true } } } } },
+    });
+    if (!departure) throw new NotFoundException("Trade departure not found (not trade-visible, or the operator isn't verified)");
+    return departure;
+  }
+
+  async confirmBooking(
+    departureId: string,
+    dto: ConfirmSeatBookingDto,
+    trade?: { agentOrganizationId: string; unitNetPrice: number },
+  ) {
     return this.prisma.$transaction(async (tx) => {
       const now = new Date();
       const heldSeats = await tx.seat.findMany({ where: { departureId, holderToken: dto.holderToken, status: "HELD" } });
@@ -170,6 +236,12 @@ export class DeparturesService {
         },
       });
 
+      let tradePartnerName: string | undefined;
+      if (trade) {
+        const agentOrg = await tx.organization.findUnique({ where: { id: trade.agentOrganizationId }, select: { name: true } });
+        tradePartnerName = agentOrg?.name;
+      }
+
       const request = await tx.enquiryRequest.create({
         data: {
           organizationId: departure.organizationId,
@@ -177,14 +249,19 @@ export class DeparturesService {
           source: "WEB",
           stage: RequestStage.BOOKED,
           partySize: valid.length,
-          notes: `Instant seat booking: ${departure.tourTemplate.title}, departing ${departure.departureDate.toDateString()}.`,
+          notes: trade
+            ? `Trade booking via partner "${tradePartnerName ?? trade.agentOrganizationId}": ${departure.tourTemplate.title}, departing ${departure.departureDate.toDateString()}.`
+            : `Instant seat booking: ${departure.tourTemplate.title}, departing ${departure.departureDate.toDateString()}.`,
           interests: [departure.tourTemplate.title],
           consentGiven: true,
-          pipelineLog: { create: [{ stage: RequestStage.BOOKED, note: "Instant seat-map booking" }] },
+          pipelineLog: {
+            create: [{ stage: RequestStage.BOOKED, note: trade ? `Trade seat-map booking via ${tradePartnerName ?? "a trade partner"}` : "Instant seat-map booking" }],
+          },
         },
       });
 
-      const totalPrice = Number(departure.pricePerSeat) * valid.length;
+      const retailTotalPrice = Number(departure.pricePerSeat) * valid.length;
+      const totalPrice = trade ? trade.unitNetPrice * valid.length : retailTotalPrice;
       const booking = await tx.booking.create({
         data: {
           organizationId: departure.organizationId,
@@ -192,6 +269,9 @@ export class DeparturesService {
           departureId: departure.id,
           currency: departure.currency,
           totalPrice,
+          channel: trade ? "TRADE" : "RETAIL",
+          agentOrganizationId: trade?.agentOrganizationId,
+          retailTotalPrice: trade ? retailTotalPrice : null,
           termsSnapshot: {
             create: {
               itinerary: {
@@ -219,10 +299,10 @@ export class DeparturesService {
 
       await this.audit.record({
         organizationId: departure.organizationId,
-        action: "departure.instant_book",
+        action: trade ? "departure.trade_book" : "departure.instant_book",
         entityType: "Booking",
         entityId: booking.id,
-        metadata: { departureId: departure.id, seatCount: valid.length },
+        metadata: { departureId: departure.id, seatCount: valid.length, agentOrganizationId: trade?.agentOrganizationId },
       });
 
       return booking;

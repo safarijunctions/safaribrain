@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/api";
 import { AcaciaSilhouette } from "../components/AcaciaSilhouette";
@@ -68,6 +68,12 @@ export function LoginPage() {
         <p className="text-xs text-stone-400 mt-5 text-center">
           Demo accounts: operator@…, manager@…, admin@safarijunctionsadventures.co.tz — password{" "}
           <code className="bg-stone-100 px-1 py-0.5 rounded">safaribrain-demo</code>
+        </p>
+        <p className="text-sm text-stone-500 mt-4 text-center">
+          Tour operator, guide, or agent?{" "}
+          <Link to="/register" className="text-clay-700 hover:underline">
+            Join the platform
+          </Link>
         </p>
       </form>
     </div>

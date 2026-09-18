@@ -87,13 +87,16 @@ function DeparturesEditor({ templateId }: { templateId: string }) {
           const booked = d.seats.filter((s) => s.status === "BOOKED").length;
           const held = d.seats.filter((s) => s.status === "HELD").length;
           return (
-            <li key={d.id} className="flex items-center justify-between">
-              <span>
-                {new Date(d.departureDate).toLocaleDateString()} · {d.status}
-              </span>
-              <span className="tabular-nums text-stone-500">
-                {booked} booked{held > 0 ? `, ${held} held` : ""} / {d.totalSeats} seats · {d.currency} {Number(d.pricePerSeat).toLocaleString()}/seat
-              </span>
+            <li key={d.id} className="py-1">
+              <div className="flex items-center justify-between">
+                <span>
+                  {new Date(d.departureDate).toLocaleDateString()} · {d.status}
+                </span>
+                <span className="tabular-nums text-stone-500">
+                  {booked} booked{held > 0 ? `, ${held} held` : ""} / {d.totalSeats} seats · {d.currency} {Number(d.pricePerSeat).toLocaleString()}/seat
+                </span>
+              </div>
+              <TradePricingRow departureId={d.id} templateId={templateId} currency={d.currency} netPricePerSeat={d.netPricePerSeat} tradeVisible={!!d.tradeVisible} />
             </li>
           );
         })}
@@ -124,6 +127,76 @@ function DeparturesEditor({ templateId }: { templateId: string }) {
           {create.isError && <p className="col-span-2 sm:col-span-4 text-red-600">{(create.error as Error).message}</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+// Trade marketplace (§6) opt-in: a departure only appears to other
+// organizations' trade partners once its own org sets a net price below
+// the public price and flips tradeVisible on.
+function TradePricingRow({
+  departureId,
+  templateId,
+  currency,
+  netPricePerSeat,
+  tradeVisible,
+}: {
+  departureId: string;
+  templateId: string;
+  currency: string;
+  netPricePerSeat?: string | null;
+  tradeVisible: boolean;
+}) {
+  const qc = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(netPricePerSeat ?? "");
+
+  const save = useMutation({
+    mutationFn: (tv: boolean) => api.patch(`/departures/${departureId}/trade`, { netPricePerSeat: Number(value), tradeVisible: tv }),
+    onSuccess: () => {
+      setEditing(false);
+      qc.invalidateQueries({ queryKey: ["departures", templateId] });
+    },
+  });
+
+  if (tradeVisible && !editing) {
+    return (
+      <div className="flex items-center justify-between text-[11px] text-acacia-700 mt-0.5">
+        <span>Trade: {currency} {Number(netPricePerSeat).toLocaleString()} net</span>
+        <button onClick={() => setEditing(true)} className="text-clay-700 hover:underline">
+          Edit
+        </button>
+        <button onClick={() => save.mutate(false)} className="text-stone-500 hover:underline">
+          Remove from trade
+        </button>
+      </div>
+    );
+  }
+
+  if (!editing) {
+    return (
+      <button onClick={() => setEditing(true)} className="text-[11px] text-clay-700 hover:underline mt-0.5">
+        + Opt into trade marketplace
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 mt-1 text-[11px]">
+      <input
+        type="number"
+        className="border border-stone-300 rounded px-1.5 py-1 w-24"
+        placeholder="Net price/seat"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+      />
+      <button disabled={!value || save.isPending} onClick={() => save.mutate(true)} className="bg-acacia-700 hover:bg-acacia-800 text-white rounded px-2 py-1 disabled:opacity-50">
+        Save & make trade-visible
+      </button>
+      <button onClick={() => setEditing(false)} className="text-stone-500">
+        Cancel
+      </button>
+      {save.isError && <span className="text-red-600">{(save.error as Error).message}</span>}
     </div>
   );
 }

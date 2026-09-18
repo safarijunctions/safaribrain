@@ -9,12 +9,15 @@ interface AuthUser {
   permissions: string[];
   organizationId: string;
   organizationName: string;
+  organizationKind?: "OPERATOR" | "GUIDE" | "AGENT";
+  organizationVerified?: boolean;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  setSession: (res: { accessToken: string; user: AuthUser }) => void;
   logout: () => void;
   hasPermission: (permission: string) => boolean;
 }
@@ -52,8 +55,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return Boolean(user?.permissions.includes(permission));
   }
 
+  // Used by RegisterPage — /auth/register already returns the same
+  // { accessToken, user } shape as /auth/login, so no separate flow is
+  // needed to land a freshly registered guide/agent/operator into a
+  // signed-in session.
+  function setSession(res: { accessToken: string; user: AuthUser }) {
+    setToken(res.accessToken);
+    localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+    setUser(res.user);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasPermission }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, loading, login, setSession, logout, hasPermission }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 
