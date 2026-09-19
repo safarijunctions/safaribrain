@@ -224,6 +224,17 @@ export interface OrganizationReview {
   createdAt: string;
 }
 
+export interface LatestReview {
+  id: string;
+  reviewerName: string;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  createdAt: string;
+  organization: { id: string; name: string; country: string };
+  tourTemplate?: { id: string; title: string } | null;
+}
+
 export interface OrganizationProfile {
   organization: {
     id: string;

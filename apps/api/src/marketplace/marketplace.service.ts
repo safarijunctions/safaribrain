@@ -83,6 +83,27 @@ export class MarketplaceService {
     });
   }
 
+  // The homepage "Live Africa" feed — real traveler reviews just approved
+  // across every verified operator/guide, not curated filler. Same trust-
+  // domain scoping as everything else in this service.
+  listLatestReviews(limit = 8) {
+    return this.prisma.review.findMany({
+      where: { status: "APPROVED", organization: { verified: true } },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      select: {
+        id: true,
+        reviewerName: true,
+        rating: true,
+        title: true,
+        body: true,
+        createdAt: true,
+        organization: { select: { id: true, name: true, country: true } },
+        tourTemplate: { select: { id: true, title: true } },
+      },
+    });
+  }
+
   // The operator/guide public profile mini-site (§7) — everything a
   // traveler needs to trust the org behind a listing before enquiring:
   // who they are, their own words, and every publicly listed template

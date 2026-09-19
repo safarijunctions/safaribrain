@@ -2,7 +2,11 @@ import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { MarketplaceListingSummary, LiveDeparture } from "../types";
+import {
+  MarketplaceListingSummary,
+  LiveDeparture,
+  LatestReview,
+} from "../types";
 import { PublicHeader } from "../components/PublicHeader";
 import { RouteLine } from "../components/RouteLine";
 import { seatAvailability } from "../lib/seatStatus";
@@ -35,6 +39,10 @@ export function MarketplacePage() {
   const { data: live } = useQuery({
     queryKey: ["live-departures"],
     queryFn: () => api.get<LiveDeparture[]>("/marketplace/departures/live"),
+  });
+  const { data: latestReviews } = useQuery({
+    queryKey: ["latest-reviews"],
+    queryFn: () => api.get<LatestReview[]>("/marketplace/reviews/latest"),
   });
 
   const countries = Array.from(
@@ -271,11 +279,52 @@ export function MarketplacePage() {
       </section>
 
       {/* ---------------------------------------------------------------- */}
+      {/* Live Africa — real traveler feedback just approved across every  */}
+      {/* verified operator/guide, not curated editorial filler.          */}
+      {/* ---------------------------------------------------------------- */}
+      {latestReviews && latestReviews.length > 0 && (
+        <section className="py-16 sm:py-20 bg-ivory">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <p className="text-xs tracking-widest2 uppercase text-savannah-600 font-medium mb-2">
+              Live Africa
+            </p>
+            <h2 className="font-display text-3xl sm:text-4xl text-forest-800 mb-8">
+              What travelers are saying, right now
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {latestReviews.slice(0, 4).map((r) => (
+                <div key={r.id} className="border-l-2 border-brass-400 pl-4">
+                  <p className="text-sm text-brass-500">
+                    {"★".repeat(r.rating)}
+                    {"☆".repeat(5 - r.rating)}
+                  </p>
+                  {r.title && (
+                    <p className="text-sm font-medium text-earth-800 mt-2">
+                      {r.title}
+                    </p>
+                  )}
+                  {r.body && (
+                    <p className="text-sm text-earth-500 mt-1 line-clamp-3">
+                      {r.body}
+                    </p>
+                  )}
+                  <p className="text-xs text-savannah-500 mt-3">
+                    {r.reviewerName} · {r.organization.name},{" "}
+                    {r.organization.country}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---------------------------------------------------------------- */}
       {/* Footer */}
       {/* ---------------------------------------------------------------- */}
       <footer className="bg-earth-800 text-white/70 py-14">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-2 sm:grid-cols-4 gap-8 text-sm">
-          <div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-2 sm:grid-cols-5 gap-8 text-sm">
+          <div className="col-span-2 sm:col-span-1">
             <p className="font-display text-lg text-white mb-3">SAFARI ATLAS</p>
             <p className="text-white/50 text-xs max-w-xs">
               A luxury African safari marketplace — live departures, verified
@@ -298,6 +347,43 @@ export function MarketplacePage() {
             >
               Joining safaris
             </a>
+            {countries.map((c) => (
+              <a
+                key={c}
+                href={`/marketplace?country=${encodeURIComponent(c)}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setCountry(c);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="block hover:text-white transition mb-1.5"
+              >
+                Safaris in {c}
+              </a>
+            ))}
+          </div>
+          <div>
+            <p className="text-white/40 text-[11px] tracking-widest2 uppercase mb-3">
+              Trade network
+            </p>
+            <Link
+              to="/login"
+              className="block hover:text-white transition mb-1.5"
+            >
+              Wholesale marketplace
+            </Link>
+            <Link
+              to="/login"
+              className="block hover:text-white transition mb-1.5"
+            >
+              Vehicle exchange
+            </Link>
+            <Link
+              to="/login"
+              className="block hover:text-white transition mb-1.5"
+            >
+              Org-to-org messaging
+            </Link>
           </div>
           <div>
             <p className="text-white/40 text-[11px] tracking-widest2 uppercase mb-3">
@@ -339,6 +425,10 @@ export function MarketplacePage() {
               Join the platform
             </Link>
           </div>
+        </div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-10 pt-6 border-t border-white/10 text-xs text-white/30">
+          © {new Date().getFullYear()} Safari Atlas. Every operator and guide on
+          this platform is independently verified.
         </div>
       </footer>
     </div>

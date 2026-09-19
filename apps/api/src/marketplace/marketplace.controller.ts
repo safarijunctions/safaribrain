@@ -81,4 +81,11 @@ export class MarketplaceController {
   getOrganizationProfile(@Param("id") id: string) {
     return this.marketplace.getOrganizationProfile(id);
   }
+
+  @Get("reviews/latest")
+  listLatestReviews(@Query("limit") limit?: string) {
+    return this.marketplace.listLatestReviews(
+      limit ? Number(limit) : undefined,
+    );
+  }
 }
