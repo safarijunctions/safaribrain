@@ -31,20 +31,20 @@ export function ListingsPanel() {
   return (
     <div className="space-y-4">
       <ProfileBioEditor />
-      <p className="text-sm text-stone-500">
+      <p className="text-sm text-earth-500">
         Templates listed here appear on the public marketplace (no login
         required) for anyone browsing safaris across Africa. Open a departure on
         a template to sell it as an instant, seat-map booking alongside the
         usual custom-quote flow.
       </p>
-      {isLoading && <p className="text-sm text-stone-500">Loading…</p>}
-      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-forest-900/5 overflow-hidden">
+      {isLoading && <p className="text-sm text-earth-500">Loading…</p>}
+      <div className="bg-white border border-sand-200 divide-y overflow-hidden">
         {data?.map((t) => (
           <div key={t.id} className="px-5 py-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
                 <p className="font-medium text-sm">{t.title}</p>
-                <p className="text-xs text-stone-500 mt-0.5">
+                <p className="text-xs text-earth-500 mt-0.5">
                   {t.durationDays} days · {t.summary}
                 </p>
               </div>
@@ -76,7 +76,7 @@ export function ListingsPanel() {
           </div>
         ))}
         {data?.length === 0 && (
-          <p className="px-5 py-8 text-center text-sm text-stone-400">
+          <p className="px-5 py-8 text-center text-sm text-earth-400">
             No tour templates yet.
           </p>
         )}
@@ -194,9 +194,9 @@ function DeparturesEditor({ templateId }: { templateId: string }) {
   });
 
   return (
-    <div className="mt-3 border-t border-stone-100 pt-3 space-y-2">
+    <div className="mt-3 border-t border-sand-100 pt-3 space-y-2">
       {departures?.length === 0 && (
-        <p className="text-xs text-stone-400">No departures opened yet.</p>
+        <p className="text-xs text-earth-400">No departures opened yet.</p>
       )}
       <ul className="text-xs space-y-1">
         {departures?.map((d) => {
@@ -208,9 +208,10 @@ function DeparturesEditor({ templateId }: { templateId: string }) {
                 <span>
                   {new Date(d.departureDate).toLocaleDateString()} · {d.status}
                 </span>
-                <span className="tabular-nums text-stone-500">
-                  {booked} booked{held > 0 ? `, ${held} held` : ""} /{" "}
-                  {d.totalSeats} seats · {d.currency}{" "}
+                <span className="tabular-nums text-earth-500">
+                  {booked} booked{held > 0 ? `, ${held} held` : ""} /{""}
+                  {d.totalSeats} seats · {d.currency}
+                  {""}
                   {Number(d.pricePerSeat).toLocaleString()}/seat
                 </span>
               </div>
@@ -234,22 +235,22 @@ function DeparturesEditor({ templateId }: { templateId: string }) {
           + Open a departure
         </button>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-stone-50 rounded-lg p-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs bg-sand-50 p-3">
           <input
             type="date"
-            className="border border-stone-300 rounded px-2 py-1.5"
+            className="border border-sand-300 rounded px-2 py-1.5"
             value={departureDate}
             onChange={(e) => setDepartureDate(e.target.value)}
           />
           <input
-            className="border border-stone-300 rounded px-2 py-1.5"
+            className="border border-sand-300 rounded px-2 py-1.5"
             placeholder="Currency"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
           />
           <input
             type="number"
-            className="border border-stone-300 rounded px-2 py-1.5"
+            className="border border-sand-300 rounded px-2 py-1.5"
             placeholder="Price/seat"
             value={pricePerSeat}
             onChange={(e) => setPricePerSeat(e.target.value)}
@@ -258,7 +259,7 @@ function DeparturesEditor({ templateId }: { templateId: string }) {
             type="number"
             min={1}
             max={60}
-            className="border border-stone-300 rounded px-2 py-1.5"
+            className="border border-sand-300 rounded px-2 py-1.5"
             placeholder="Total seats"
             value={totalSeats}
             onChange={(e) => setTotalSeats(Number(e.target.value))}
@@ -273,13 +274,13 @@ function DeparturesEditor({ templateId }: { templateId: string }) {
             </button>
             <button
               onClick={() => setShowForm(false)}
-              className="border border-stone-300 rounded px-3 py-1.5"
+              className="border border-sand-300 rounded px-3 py-1.5"
             >
               Cancel
             </button>
           </div>
           {create.isError && (
-            <p className="col-span-2 sm:col-span-4 text-red-600">
+            <p className="col-span-2 sm:col-span-4 text-status-full">
               {(create.error as Error).message}
             </p>
           )}
@@ -335,7 +336,7 @@ function TradePricingRow({
         </button>
         <button
           onClick={() => save.mutate(false)}
-          className="text-stone-500 hover:underline"
+          className="text-earth-500 hover:underline"
         >
           Remove from trade
         </button>
@@ -358,7 +359,7 @@ function TradePricingRow({
     <div className="flex items-center gap-1.5 mt-1 text-[11px]">
       <input
         type="number"
-        className="border border-stone-300 rounded px-1.5 py-1 w-24"
+        className="border border-sand-300 rounded px-1.5 py-1 w-24"
         placeholder="Net price/seat"
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -370,11 +371,13 @@ function TradePricingRow({
       >
         Save & make trade-visible
       </button>
-      <button onClick={() => setEditing(false)} className="text-stone-500">
+      <button onClick={() => setEditing(false)} className="text-earth-500">
         Cancel
       </button>
       {save.isError && (
-        <span className="text-red-600">{(save.error as Error).message}</span>
+        <span className="text-status-full">
+          {(save.error as Error).message}
+        </span>
       )}
     </div>
   );

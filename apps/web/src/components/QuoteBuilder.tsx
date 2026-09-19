@@ -30,8 +30,22 @@ export function QuoteBuilder({
   const [taxPercent, setTaxPercent] = useState(18);
   const [commissionPercent, setCommissionPercent] = useState(10);
   const [costLines, setCostLines] = useState<CostLineForm[]>([
-    { label: "4x4 vehicle + driver-guide", category: "TRANSPORT", quantity: template.durationDays, unitCost: 250, currency: "USD", internal: false },
-    { label: "Lodge accommodation (net rate)", category: "ACCOMMODATION", quantity: Math.max(template.durationDays - 1, 1), unitCost: 300, currency: "USD", internal: true },
+    {
+      label: "4x4 vehicle + driver-guide",
+      category: "TRANSPORT",
+      quantity: template.durationDays,
+      unitCost: 250,
+      currency: "USD",
+      internal: false,
+    },
+    {
+      label: "Lodge accommodation (net rate)",
+      category: "ACCOMMODATION",
+      quantity: Math.max(template.durationDays - 1, 1),
+      unitCost: 300,
+      currency: "USD",
+      internal: true,
+    },
   ]);
 
   const create = useMutation({
@@ -51,17 +65,20 @@ export function QuoteBuilder({
   });
 
   function updateLine(idx: number, patch: Partial<CostLineForm>) {
-    setCostLines((lines) => lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+    setCostLines((lines) =>
+      lines.map((l, i) => (i === idx ? { ...l, ...patch } : l)),
+    );
   }
 
   return (
-    <div className="border border-stone-200 rounded-xl p-4 bg-forest-50/40 space-y-4">
+    <div className="border border-sand-200 p-4 bg-forest-50/40 space-y-4">
       <div>
         <h3 className="text-sm font-medium mb-1">{template.title}</h3>
-        <ol className="text-xs text-stone-500 list-decimal list-inside">
+        <ol className="text-xs text-earth-500 list-decimal list-inside">
           {template.versions[0]?.days.map((d) => (
             <li key={d.id}>
-              Day {d.dayNumber}: {d.title} {d.place ? `— ${d.place.name}` : ""} (park fees applied automatically)
+              Day {d.dayNumber}: {d.title} {d.place ? `— ${d.place.name}` : ""}{" "}
+              (park fees applied automatically)
             </li>
           ))}
         </ol>
@@ -70,11 +87,19 @@ export function QuoteBuilder({
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div>
           <label className="block font-medium mb-1">Currency</label>
-          <input className="w-full border border-stone-300 rounded px-2 py-1" value={currency} onChange={(e) => setCurrency(e.target.value)} />
+          <input
+            className="w-full border border-sand-300 rounded px-2 py-1"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+          />
         </div>
         <div>
           <label className="block font-medium mb-1">Residency</label>
-          <select className="w-full border border-stone-300 rounded px-2 py-1" value={residency} onChange={(e) => setResidency(e.target.value)}>
+          <select
+            className="w-full border border-sand-300 rounded px-2 py-1"
+            value={residency}
+            onChange={(e) => setResidency(e.target.value)}
+          >
             <option value="NON_RESIDENT">Non-resident</option>
             <option value="RESIDENT">Resident</option>
             <option value="EAST_AFRICAN">East African</option>
@@ -82,68 +107,121 @@ export function QuoteBuilder({
         </div>
         <div>
           <label className="block font-medium mb-1">Markup %</label>
-          <input type="number" className="w-full border border-stone-300 rounded px-2 py-1" value={markupPercent} onChange={(e) => setMarkupPercent(Number(e.target.value))} />
+          <input
+            type="number"
+            className="w-full border border-sand-300 rounded px-2 py-1"
+            value={markupPercent}
+            onChange={(e) => setMarkupPercent(Number(e.target.value))}
+          />
         </div>
         <div>
           <label className="block font-medium mb-1">Tax %</label>
-          <input type="number" className="w-full border border-stone-300 rounded px-2 py-1" value={taxPercent} onChange={(e) => setTaxPercent(Number(e.target.value))} />
+          <input
+            type="number"
+            className="w-full border border-sand-300 rounded px-2 py-1"
+            value={taxPercent}
+            onChange={(e) => setTaxPercent(Number(e.target.value))}
+          />
         </div>
         <div>
-          <label className="block font-medium mb-1">Discount ({currency})</label>
-          <input type="number" className="w-full border border-stone-300 rounded px-2 py-1" value={discountAmount} onChange={(e) => setDiscountAmount(Number(e.target.value))} />
+          <label className="block font-medium mb-1">
+            Discount ({currency})
+          </label>
+          <input
+            type="number"
+            className="w-full border border-sand-300 rounded px-2 py-1"
+            value={discountAmount}
+            onChange={(e) => setDiscountAmount(Number(e.target.value))}
+          />
         </div>
         <div>
           <label className="block font-medium mb-1">Commission %</label>
-          <input type="number" className="w-full border border-stone-300 rounded px-2 py-1" value={commissionPercent} onChange={(e) => setCommissionPercent(Number(e.target.value))} />
+          <input
+            type="number"
+            className="w-full border border-sand-300 rounded px-2 py-1"
+            value={commissionPercent}
+            onChange={(e) => setCommissionPercent(Number(e.target.value))}
+          />
         </div>
         <div>
           <label className="block font-medium mb-1">Party size</label>
-          <input disabled className="w-full border border-stone-200 bg-stone-100 rounded px-2 py-1" value={partySize} />
+          <input
+            disabled
+            className="w-full border border-sand-200 bg-sand-100 rounded px-2 py-1"
+            value={partySize}
+          />
         </div>
       </div>
 
       <div>
-        <p className="text-xs font-medium mb-2">Supplier cost lines (park fees are added automatically from the itinerary)</p>
+        <p className="text-xs font-medium mb-2">
+          Supplier cost lines (park fees are added automatically from the
+          itinerary)
+        </p>
         <div className="space-y-2">
           {costLines.map((line, idx) => (
-            <div key={idx} className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-center text-xs border border-stone-100 sm:border-0 rounded-lg sm:rounded-none p-2 sm:p-0">
+            <div
+              key={idx}
+              className="grid grid-cols-2 sm:grid-cols-12 gap-2 items-center text-xs border border-sand-100 sm:border-0 sm:rounded-none p-2 sm:p-0"
+            >
               <input
-                className="col-span-2 sm:col-span-4 border border-stone-300 rounded px-2 py-1"
+                className="col-span-2 sm:col-span-4 border border-sand-300 rounded px-2 py-1"
                 value={line.label}
                 onChange={(e) => updateLine(idx, { label: e.target.value })}
               />
               <select
-                className="col-span-1 sm:col-span-2 border border-stone-300 rounded px-2 py-1"
+                className="col-span-1 sm:col-span-2 border border-sand-300 rounded px-2 py-1"
                 value={line.category}
-                onChange={(e) => updateLine(idx, { category: e.target.value as CostLineForm["category"] })}
+                onChange={(e) =>
+                  updateLine(idx, {
+                    category: e.target.value as CostLineForm["category"],
+                  })
+                }
               >
-                {["ACCOMMODATION", "TRANSPORT", "ACTIVITY", "OTHER"].map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
+                {["ACCOMMODATION", "TRANSPORT", "ACTIVITY", "OTHER"].map(
+                  (c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ),
+                )}
               </select>
               <input
                 type="number"
-                className="col-span-1 sm:col-span-2 border border-stone-300 rounded px-2 py-1"
+                className="col-span-1 sm:col-span-2 border border-sand-300 rounded px-2 py-1"
                 value={line.quantity}
-                onChange={(e) => updateLine(idx, { quantity: Number(e.target.value) })}
+                onChange={(e) =>
+                  updateLine(idx, { quantity: Number(e.target.value) })
+                }
                 placeholder="Qty"
               />
               <input
                 type="number"
-                className="col-span-1 sm:col-span-2 border border-stone-300 rounded px-2 py-1"
+                className="col-span-1 sm:col-span-2 border border-sand-300 rounded px-2 py-1"
                 value={line.unitCost}
-                onChange={(e) => updateLine(idx, { unitCost: Number(e.target.value) })}
+                onChange={(e) =>
+                  updateLine(idx, { unitCost: Number(e.target.value) })
+                }
                 placeholder="Unit cost"
               />
-              <label className="col-span-1 sm:col-span-1 flex items-center gap-1" title="Internal cost — never shown to the client">
-                <input type="checkbox" checked={line.internal} onChange={(e) => updateLine(idx, { internal: e.target.checked })} />
+              <label
+                className="col-span-1 sm:col-span-1 flex items-center gap-1"
+                title="Internal cost — never shown to the client"
+              >
+                <input
+                  type="checkbox"
+                  checked={line.internal}
+                  onChange={(e) =>
+                    updateLine(idx, { internal: e.target.checked })
+                  }
+                />
                 internal
               </label>
               <button
-                className="col-span-2 sm:col-span-1 text-red-500 hover:underline text-left sm:text-center"
-                onClick={() => setCostLines((lines) => lines.filter((_, i) => i !== idx))}
+                className="col-span-2 sm:col-span-1 text-status-full hover:underline text-left sm:text-center"
+                onClick={() =>
+                  setCostLines((lines) => lines.filter((_, i) => i !== idx))
+                }
               >
                 remove
               </button>
@@ -153,19 +231,33 @@ export function QuoteBuilder({
         <button
           className="mt-2 text-xs text-forest-700 hover:underline"
           onClick={() =>
-            setCostLines((lines) => [...lines, { label: "", category: "OTHER", quantity: 1, unitCost: 0, currency, internal: false }])
+            setCostLines((lines) => [
+              ...lines,
+              {
+                label: "",
+                category: "OTHER",
+                quantity: 1,
+                unitCost: 0,
+                currency,
+                internal: false,
+              },
+            ])
           }
         >
           + Add cost line
         </button>
       </div>
 
-      {create.isError && <p className="text-xs text-red-600">{(create.error as Error).message}</p>}
+      {create.isError && (
+        <p className="text-xs text-status-full">
+          {(create.error as Error).message}
+        </p>
+      )}
 
       <button
         onClick={() => create.mutate()}
         disabled={create.isPending}
-        className="bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-forest-900/10 transition disabled:opacity-50"
+        className="bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white text-sm font-medium px-4 py-2 shadow-sm shadow-forest-900/10 transition disabled:opacity-50"
       >
         {create.isPending ? "Pricing…" : "Create quote draft"}
       </button>

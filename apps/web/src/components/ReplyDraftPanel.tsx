@@ -4,7 +4,7 @@ import { api } from "../lib/api";
 import { ReplyDraftJob } from "../types";
 
 // §1.3 / §9's non-negotiable, same as AiDraftPanel: nothing an AI drafts
-// here reaches the client until a human reviews and edits it — "Approve &
+// here reaches the client until a human reviews and edits it —"Approve &
 // copy" records exactly the text in this box, never the AI's raw output,
 // and there's no automatic send since no messaging integration is live yet.
 export function ReplyDraftPanel({ requestId }: { requestId: string }) {
@@ -14,7 +14,8 @@ export function ReplyDraftPanel({ requestId }: { requestId: string }) {
 
   const { data: drafts, isLoading } = useQuery({
     queryKey: ["reply-drafts", requestId],
-    queryFn: () => api.get<ReplyDraftJob[]>(`/ai/reply-drafts?requestId=${requestId}`),
+    queryFn: () =>
+      api.get<ReplyDraftJob[]>(`/ai/reply-drafts?requestId=${requestId}`),
   });
 
   function invalidate() {
@@ -22,12 +23,14 @@ export function ReplyDraftPanel({ requestId }: { requestId: string }) {
   }
 
   const generate = useMutation({
-    mutationFn: () => api.post<ReplyDraftJob>("/ai/reply-drafts", { requestId }),
+    mutationFn: () =>
+      api.post<ReplyDraftJob>("/ai/reply-drafts", { requestId }),
     onSuccess: invalidate,
   });
 
   const approve = useMutation({
-    mutationFn: ({ id, replyText }: { id: string; replyText: string }) => api.post(`/ai/reply-drafts/${id}/approve`, { replyText }),
+    mutationFn: ({ id, replyText }: { id: string; replyText: string }) =>
+      api.post(`/ai/reply-drafts/${id}/approve`, { replyText }),
     onSuccess: invalidate,
   });
 
@@ -53,8 +56,9 @@ export function ReplyDraftPanel({ requestId }: { requestId: string }) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-stone-500">
-        Draft a first-reply message with AI, edit it, then approve to copy it and log it on this enquiry's activity trail.
+      <p className="text-xs text-earth-500">
+        Draft a first-reply message with AI, edit it, then approve to copy it
+        and log it on this enquiry's activity trail.
       </p>
       <button
         onClick={() => generate.mutate()}
@@ -63,17 +67,26 @@ export function ReplyDraftPanel({ requestId }: { requestId: string }) {
       >
         {generate.isPending ? "Drafting…" : "Draft AI reply"}
       </button>
-      {generate.isError && <p className="text-xs text-red-600">{(generate.error as Error).message}</p>}
+      {generate.isError && (
+        <p className="text-xs text-status-full">
+          {(generate.error as Error).message}
+        </p>
+      )}
 
-      {isLoading && <p className="text-xs text-stone-400">Loading…</p>}
+      {isLoading && <p className="text-xs text-earth-400">Loading…</p>}
 
       {pending.map((job) => (
-        <div key={job.id} className="border border-brass-200 bg-brass-50/50 rounded-lg p-3 space-y-2">
+        <div
+          key={job.id}
+          className="border border-brass-200 bg-brass-50/50 p-3 space-y-2"
+        >
           <textarea
-            className="w-full border border-stone-300 rounded px-2 py-1.5 text-xs"
+            className="w-full border border-sand-300 rounded px-2 py-1.5 text-xs"
             rows={6}
             value={editText[job.id] ?? job.output.replyText}
-            onChange={(e) => setEditText((d) => ({ ...d, [job.id]: e.target.value }))}
+            onChange={(e) =>
+              setEditText((d) => ({ ...d, [job.id]: e.target.value }))
+            }
           />
           <div className="flex items-center gap-2">
             <button
@@ -83,7 +96,11 @@ export function ReplyDraftPanel({ requestId }: { requestId: string }) {
             >
               {copiedId === job.id ? "Copied!" : "Approve & copy"}
             </button>
-            <button onClick={() => reject.mutate(job.id)} disabled={reject.isPending} className="text-xs border border-stone-300 rounded px-3 py-1.5">
+            <button
+              onClick={() => reject.mutate(job.id)}
+              disabled={reject.isPending}
+              className="text-xs border border-sand-300 rounded px-3 py-1.5"
+            >
               Discard
             </button>
           </div>
@@ -91,11 +108,18 @@ export function ReplyDraftPanel({ requestId }: { requestId: string }) {
       ))}
 
       {decided.length > 0 && (
-        <details className="text-xs text-stone-500">
-          <summary className="cursor-pointer">{decided.length} past draft{decided.length === 1 ? "" : "s"}</summary>
+        <details className="text-xs text-earth-500">
+          <summary className="cursor-pointer">
+            {decided.length} past draft{decided.length === 1 ? "" : "s"}
+          </summary>
           <ul className="mt-2 space-y-2">
             {decided.map((job) => (
-              <li key={job.id} className={job.status === "REJECTED" ? "line-through text-stone-400" : ""}>
+              <li
+                key={job.id}
+                className={
+                  job.status === "REJECTED" ? "line-through text-earth-400" : ""
+                }
+              >
                 {job.output.replyText.slice(0, 120)}
                 {job.output.replyText.length > 120 ? "…" : ""}
               </li>
