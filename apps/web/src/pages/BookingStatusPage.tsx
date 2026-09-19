@@ -49,7 +49,7 @@ export function BookingStatusPage() {
 
   if (isLoading || !data)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-sunset-50 to-acacia-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-brass-50 to-moss-50">
         <p className="text-sm text-stone-500">{online ? "Loading your booking…" : "You're offline, and this page hasn't been saved for offline use yet."}</p>
       </div>
     );
@@ -57,19 +57,19 @@ export function BookingStatusPage() {
   const ticketReady = ["PAID", "ACTIVE", "COMPLETED"].includes(data.status);
 
   return (
-    <div className="min-h-screen relative overflow-hidden py-10 px-4 bg-gradient-to-b from-sunset-50 via-clay-50 to-acacia-50">
-      <div className="absolute -top-32 left-1/2 -translate-x-1/2 h-72 w-[36rem] rounded-full bg-sunset-300/30 blur-3xl" aria-hidden />
-      <AcaciaSilhouette className="hidden md:block absolute bottom-8 right-8 h-20 w-20 text-acacia-800/10 lg:h-28 lg:w-28" />
+    <div className="min-h-screen relative overflow-hidden py-10 px-4 bg-gradient-to-b from-brass-50 via-forest-50 to-moss-50">
+      <div className="absolute -top-32 left-1/2 -translate-x-1/2 h-72 w-[36rem] rounded-full bg-brass-300/30 blur-3xl" aria-hidden />
+      <AcaciaSilhouette className="hidden md:block absolute bottom-8 right-8 h-20 w-20 text-moss-800/10 lg:h-28 lg:w-28" />
 
-      <div className="relative max-w-2xl mx-auto bg-white rounded-2xl shadow-xl shadow-clay-900/10 border border-white overflow-hidden">
+      <div className="relative max-w-2xl mx-auto bg-white rounded-2xl shadow-xl shadow-forest-900/10 border border-white overflow-hidden">
         {!online && (
-          <div className="bg-sunset-100 text-sunset-800 text-xs font-medium text-center py-2 px-4">
+          <div className="bg-brass-100 text-brass-800 text-xs font-medium text-center py-2 px-4">
             You're offline — showing the last saved copy of this page. Payments and reviews need a connection to go through.
           </div>
         )}
-        <div className="bg-gradient-to-br from-clay-700 via-clay-700 to-acacia-800 text-white px-7 py-6 flex items-start justify-between gap-4">
+        <div className="bg-gradient-to-br from-forest-700 via-forest-700 to-moss-800 text-white px-7 py-6 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.15em] text-sunset-200">Safari Junction's Adventures</p>
+            <p className="text-xs uppercase tracking-[0.15em] text-brass-200">Safari Junction's Adventures</p>
             <h1 className="font-display text-2xl font-semibold mt-1">Your booking</h1>
             <p className="text-sm text-white/80 mt-1">Prepared for {data.contactName}</p>
           </div>
@@ -81,14 +81,14 @@ export function BookingStatusPage() {
         <div className="p-7 space-y-7">
           {data.itinerary && (
             <section>
-              <h2 className="font-display text-lg font-semibold text-clay-800 mb-3">Itinerary</h2>
+              <h2 className="font-display text-lg font-semibold text-forest-800 mb-3">Itinerary</h2>
               <ol className="space-y-3 text-sm">
                 {data.itinerary.days.map((d) => (
-                  <li key={d.dayNumber} className="border-l-2 border-sunset-400 pl-3.5">
+                  <li key={d.dayNumber} className="border-l-2 border-brass-400 pl-3.5">
                     <p className="font-medium text-stone-800">
                       Day {d.dayNumber}: {d.title}
                     </p>
-                    {d.place && <p className="text-acacia-700 text-xs font-medium">{d.place.name}</p>}
+                    {d.place && <p className="text-moss-700 text-xs font-medium">{d.place.name}</p>}
                     <p className="text-stone-400 text-xs">Meals: {d.mealsIncluded.join(", ") || "—"}</p>
                   </li>
                 ))}
@@ -98,7 +98,7 @@ export function BookingStatusPage() {
 
           {data.travelers.length > 0 && (
             <section>
-              <h2 className="font-display text-lg font-semibold text-clay-800 mb-3">Travelers</h2>
+              <h2 className="font-display text-lg font-semibold text-forest-800 mb-3">Travelers</h2>
               <ul className="text-sm space-y-1">
                 {data.travelers.map((t, i) => (
                   <li key={i}>{t.fullName}</li>
@@ -108,7 +108,7 @@ export function BookingStatusPage() {
           )}
 
           <section>
-            <h2 className="font-display text-lg font-semibold text-clay-800 mb-3">Payment</h2>
+            <h2 className="font-display text-lg font-semibold text-forest-800 mb-3">Payment</h2>
             <table className="w-full text-sm">
               <tbody>
                 {data.payments.map((p, i) => (
@@ -121,16 +121,16 @@ export function BookingStatusPage() {
                     </td>
                   </tr>
                 ))}
-                <tr className="border-t-2 border-clay-200">
-                  <td className="py-2.5 font-display font-semibold text-base text-clay-800">Total</td>
-                  <td className="py-2.5 text-right font-display font-semibold text-base text-clay-800 tabular-nums">
+                <tr className="border-t-2 border-forest-200">
+                  <td className="py-2.5 font-display font-semibold text-base text-forest-800">Total</td>
+                  <td className="py-2.5 text-right font-display font-semibold text-base text-forest-800 tabular-nums">
                     {data.currency} {Number(data.totalPrice).toLocaleString()}
                   </td>
                 </tr>
                 {data.balanceDue > 0 && (
                   <tr>
-                    <td className="py-1 text-sunset-700">Balance due</td>
-                    <td className="py-1 text-right tabular-nums text-sunset-700">
+                    <td className="py-1 text-brass-700">Balance due</td>
+                    <td className="py-1 text-right tabular-nums text-brass-700">
                       {data.currency} {data.balanceDue.toLocaleString()}
                     </td>
                   </tr>
@@ -148,16 +148,16 @@ export function BookingStatusPage() {
 
           {data.status === "COMPLETED" && (
             <section className="border-t border-stone-200 pt-6">
-              <h2 className="font-display text-lg font-semibold text-clay-800 mb-3">How was your trip?</h2>
+              <h2 className="font-display text-lg font-semibold text-forest-800 mb-3">How was your trip?</h2>
               {data.review ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-sunset-600">{"★".repeat(data.review.rating)}{"☆".repeat(5 - data.review.rating)}</p>
+                  <p className="text-sm text-brass-600">{"★".repeat(data.review.rating)}{"☆".repeat(5 - data.review.rating)}</p>
                   {data.review.title && <p className="text-sm font-medium text-stone-800">{data.review.title}</p>}
                   {data.review.body && <p className="text-sm text-stone-600">{data.review.body}</p>}
                   {data.review.status === "PENDING" && <p className="text-xs text-stone-400">Thanks — your review is awaiting a quick check before it goes live.</p>}
                   {data.review.operatorReply && (
-                    <div className="bg-clay-50 rounded-lg p-3 text-xs text-stone-600">
-                      <p className="font-medium text-clay-700 mb-1">Reply from Safari Junction's Adventures</p>
+                    <div className="bg-forest-50 rounded-lg p-3 text-xs text-stone-600">
+                      <p className="font-medium text-forest-700 mb-1">Reply from Safari Junction's Adventures</p>
                       {data.review.operatorReply}
                     </div>
                   )}
@@ -179,7 +179,7 @@ export function BookingStatusPage() {
               title={online ? undefined : "Downloads need a connection"}
               className={`flex-1 text-center font-medium rounded-xl py-3 shadow-sm transition ${
                 online
-                  ? "bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white shadow-clay-900/20"
+                  ? "bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white shadow-forest-900/20"
                   : "bg-stone-200 text-stone-400 cursor-not-allowed pointer-events-none"
               }`}
             >
@@ -194,7 +194,7 @@ export function BookingStatusPage() {
                 title={online ? undefined : "Downloads need a connection"}
                 className={`flex-1 text-center font-medium rounded-xl py-3 shadow-sm transition ${
                   online
-                    ? "bg-gradient-to-r from-acacia-600 to-acacia-700 hover:from-acacia-700 hover:to-acacia-800 text-white shadow-acacia-900/20"
+                    ? "bg-gradient-to-r from-moss-600 to-moss-700 hover:from-moss-700 hover:to-moss-800 text-white shadow-moss-900/20"
                     : "bg-stone-200 text-stone-400 cursor-not-allowed pointer-events-none"
                 }`}
               >
@@ -222,7 +222,7 @@ function ReviewForm({ token, onSubmitted }: { token: string; onSubmitted: () => 
     <div className="space-y-3">
       <div className="flex gap-1 text-2xl">
         {STARS.map((n) => (
-          <button key={n} onClick={() => setRating(n)} className={n <= rating ? "text-sunset-500" : "text-stone-300"} aria-label={`${n} star${n > 1 ? "s" : ""}`}>
+          <button key={n} onClick={() => setRating(n)} className={n <= rating ? "text-brass-500" : "text-stone-300"} aria-label={`${n} star${n > 1 ? "s" : ""}`}>
             ★
           </button>
         ))}
@@ -239,7 +239,7 @@ function ReviewForm({ token, onSubmitted }: { token: string; onSubmitted: () => 
       <button
         onClick={() => submit.mutate()}
         disabled={rating === 0 || submit.isPending}
-        className="w-full bg-gradient-to-r from-sunset-500 to-sunset-600 hover:from-sunset-600 hover:to-sunset-700 text-white font-medium rounded-xl py-3 shadow-sm shadow-sunset-900/20 transition disabled:opacity-50"
+        className="w-full bg-gradient-to-r from-brass-500 to-brass-600 hover:from-brass-600 hover:to-brass-700 text-white font-medium rounded-xl py-3 shadow-sm shadow-brass-900/20 transition disabled:opacity-50"
       >
         {submit.isPending ? "Sending…" : "Submit review"}
       </button>

@@ -56,7 +56,7 @@ export function AuditLogPanel() {
         </div>
         {(entityType || entityId) && (
           <button
-            className="text-xs text-clay-700 hover:underline pb-1.5"
+            className="text-xs text-forest-700 hover:underline pb-1.5"
             onClick={() => {
               setEntityType("");
               setEntityId("");
@@ -70,10 +70,10 @@ export function AuditLogPanel() {
 
       {isLoading && <p className="text-sm text-stone-500">Loading…</p>}
 
-      <div className="bg-white border border-stone-200 rounded-xl shadow-sm shadow-clay-900/5 overflow-hidden">
+      <div className="bg-white border border-stone-200 rounded-xl shadow-sm shadow-forest-900/5 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
-            <thead className="bg-clay-50/60 text-stone-500 text-left">
+            <thead className="bg-forest-50/60 text-stone-500 text-left">
               <tr>
                 <th className="px-4 py-2 font-medium">When</th>
                 <th className="px-4 py-2 font-medium">Who</th>
@@ -87,7 +87,7 @@ export function AuditLogPanel() {
                 <tr key={row.id} className="border-t border-stone-100 align-top">
                   <td className="px-4 py-2 text-stone-500 whitespace-nowrap">{new Date(row.createdAt).toLocaleString()}</td>
                   <td className="px-4 py-2 whitespace-nowrap">{row.actor ? row.actor.fullName : <span className="text-stone-400">client / system</span>}</td>
-                  <td className="px-4 py-2 font-medium text-clay-800 whitespace-nowrap">{row.action}</td>
+                  <td className="px-4 py-2 font-medium text-forest-800 whitespace-nowrap">{row.action}</td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     {row.entityType} <span className="text-stone-400">{row.entityId.slice(0, 10)}…</span>
                   </td>

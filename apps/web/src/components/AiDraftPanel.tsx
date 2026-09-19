@@ -4,8 +4,8 @@ import { api } from "../lib/api";
 import { AiItineraryDraft, AiDraftDay } from "../types";
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFTED: "bg-sunset-100 text-sunset-700",
-  APPROVED: "bg-acacia-100 text-acacia-800",
+  DRAFTED: "bg-brass-100 text-brass-700",
+  APPROVED: "bg-moss-100 text-moss-800",
   REJECTED: "bg-red-100 text-red-700",
 };
 
@@ -35,7 +35,7 @@ export function AiDraftPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm shadow-clay-900/5 space-y-3">
+      <div className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm shadow-forest-900/5 space-y-3">
         <p className="text-sm text-stone-500">
           Describe a trip and an AI will draft a day-by-day outline. Nothing is created until you review and approve it below — the AI
           never publishes anything on its own.
@@ -57,7 +57,7 @@ export function AiDraftPanel() {
         <button
           onClick={() => generate.mutate()}
           disabled={!prompt || generate.isPending}
-          className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition disabled:opacity-50"
+          className="bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-forest-900/10 transition disabled:opacity-50"
         >
           {generate.isPending ? "Drafting…" : "Generate draft"}
         </button>
@@ -77,7 +77,7 @@ export function AiDraftPanel() {
       {decided.length > 0 && (
         <div>
           <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-2">History</p>
-          <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-clay-900/5 overflow-hidden">
+          <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-forest-900/5 overflow-hidden">
             {decided.map((d) => (
               <div key={d.id} className="flex items-center justify-between px-5 py-3 text-sm">
                 <span>{d.output.title}</span>
@@ -121,7 +121,7 @@ function DraftReviewCard({ draft, onDone }: { draft: AiItineraryDraft; onDone: (
   }
 
   return (
-    <div className="border border-sunset-200 rounded-xl p-4 bg-sunset-50/40 space-y-3">
+    <div className="border border-brass-200 rounded-xl p-4 bg-brass-50/40 space-y-3">
       <p className="text-xs text-stone-500">
         Model: {draft.model} · Brief: "{draft.prompt}"
       </p>
@@ -133,7 +133,7 @@ function DraftReviewCard({ draft, onDone }: { draft: AiItineraryDraft; onDone: (
       <div className="space-y-2">
         {days.map((d, i) => (
           <div key={i} className="border border-stone-200 bg-white rounded-lg p-3 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-medium text-clay-700">Day {d.dayNumber}</div>
+            <div className="flex items-center gap-2 text-xs font-medium text-forest-700">Day {d.dayNumber}</div>
             <input className="w-full border border-stone-300 rounded px-2 py-1.5 text-sm" value={d.title} onChange={(e) => updateDay(i, { title: e.target.value })} />
             <textarea className="w-full border border-stone-300 rounded px-2 py-1.5 text-xs" rows={2} value={d.description ?? ""} onChange={(e) => updateDay(i, { description: e.target.value })} />
             <div className="flex gap-3 text-xs">
@@ -153,7 +153,7 @@ function DraftReviewCard({ draft, onDone }: { draft: AiItineraryDraft; onDone: (
         <button
           onClick={() => approve.mutate()}
           disabled={approve.isPending}
-          className="text-sm font-medium bg-acacia-600 hover:bg-acacia-700 text-white rounded-lg px-4 py-2 disabled:opacity-50"
+          className="text-sm font-medium bg-moss-600 hover:bg-moss-700 text-white rounded-lg px-4 py-2 disabled:opacity-50"
         >
           {approve.isPending ? "Creating…" : "Approve & create template"}
         </button>

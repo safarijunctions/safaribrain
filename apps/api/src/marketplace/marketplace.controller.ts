@@ -40,6 +40,15 @@ export class MarketplaceController {
     return this.departures.listPublicForTemplate(id);
   }
 
+  // Static "live" segment declared ahead of the dynamic :id route below,
+  // same reasoning as the web router's departureSeatMapRoute ordering —
+  // otherwise /marketplace/departures/live would be swallowed as a
+  // department id lookup.
+  @Get("departures/live")
+  listLiveDepartures() {
+    return this.marketplace.listLiveDepartures();
+  }
+
   @Get("departures/:id")
   getDeparture(@Param("id") id: string) {
     return this.departures.getPublicDeparture(id);

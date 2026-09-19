@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { fromJsonField } from "../common/json-field";
 
 @Injectable()
 export class ProductsService {
@@ -29,7 +30,13 @@ export class ProductsService {
       },
     });
     if (!template) throw new NotFoundException("Tour template not found");
-    return template;
+    return {
+      ...template,
+      versions: template.versions.map((v) => ({
+        ...v,
+        days: v.days.map((d) => ({ ...d, mealsIncluded: fromJsonField<string[]>(d.mealsIncluded, []) })),
+      })),
+    };
   }
 
   // Phase 3 (§7) marketplace: an operator opts a template in/out of public

@@ -45,7 +45,7 @@ export function UsersPanel() {
   return (
     <div className="space-y-6">
       {tempPasswordNotice && (
-        <div className="bg-sunset-50 border border-sunset-200 rounded-xl p-4 text-sm">
+        <div className="bg-brass-50 border border-brass-200 rounded-xl p-4 text-sm">
           <p className="font-medium">
             One-time password for {tempPasswordNotice.email}: <code className="bg-white px-1.5 py-0.5 rounded border">{tempPasswordNotice.password}</code>
           </p>
@@ -58,7 +58,7 @@ export function UsersPanel() {
 
       <div className="flex justify-between items-center">
         <p className="text-sm text-stone-500">{data?.length ?? 0} people have access to this organization.</p>
-        <button onClick={() => setShowForm((s) => !s)} className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition">
+        <button onClick={() => setShowForm((s) => !s)} className="bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-forest-900/10 transition">
           {showForm ? "Close" : "+ Invite person"}
         </button>
       </div>
@@ -75,7 +75,7 @@ export function UsersPanel() {
 
       {isLoading && <p className="text-sm text-stone-500">Loading…</p>}
 
-      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-clay-900/5 overflow-hidden">
+      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-forest-900/5 overflow-hidden">
         {data?.map((m) => (
           <div key={m.id} className="px-5 py-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
@@ -89,7 +89,7 @@ export function UsersPanel() {
                 <button
                   onClick={() => resetPassword.mutate(m.id)}
                   disabled={resetPassword.isPending}
-                  className="text-xs text-clay-700 hover:underline disabled:opacity-50"
+                  className="text-xs text-forest-700 hover:underline disabled:opacity-50"
                   title="Generate a new one-time password for this person — helps when they're locked out"
                 >
                   Reset password
@@ -132,7 +132,7 @@ function InviteForm({ onInvited }: { onInvited: (res: { user: { email: string };
   });
 
   return (
-    <div className="border border-stone-200 rounded-xl p-4 bg-clay-50/40 grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div className="border border-stone-200 rounded-xl p-4 bg-forest-50/40 grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div>
         <label className="block text-xs font-medium mb-1">Full name</label>
         <input className="w-full border border-stone-300 rounded px-2 py-1.5 text-sm" value={fullName} onChange={(e) => setFullName(e.target.value)} />
@@ -156,7 +156,7 @@ function InviteForm({ onInvited }: { onInvited: (res: { user: { email: string };
         <button
           onClick={() => invite.mutate()}
           disabled={invite.isPending || !fullName || !email}
-          className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition disabled:opacity-50"
+          className="bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-forest-900/10 transition disabled:opacity-50"
         >
           {invite.isPending ? "Inviting…" : "Invite"}
         </button>

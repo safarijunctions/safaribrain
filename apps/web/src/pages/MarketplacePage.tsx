@@ -2,65 +2,336 @@ import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { MarketplaceListingSummary } from "../types";
-import { AcaciaSilhouette } from "../components/AcaciaSilhouette";
+import { MarketplaceListingSummary, LiveDeparture } from "../types";
+import { PublicHeader } from "../components/PublicHeader";
+import { RouteLine } from "../components/RouteLine";
+import { seatAvailability } from "../lib/seatStatus";
+
+const SAFARI_TYPES = [
+  "Any type",
+  "Wildlife",
+  "Family",
+  "Luxury",
+  "Photography",
+  "Adventure",
+];
+const BUDGETS = [
+  "Any budget",
+  "Under $1,000 pp",
+  "$1,000–$2,000 pp",
+  "$2,000+ pp",
+];
 
 export function MarketplacePage() {
   const [country, setCountry] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["marketplace", country],
-    queryFn: () => api.get<MarketplaceListingSummary[]>(`/marketplace/templates${country ? `?country=${encodeURIComponent(country)}` : ""}`),
+    queryFn: () =>
+      api.get<MarketplaceListingSummary[]>(
+        `/marketplace/templates${country ? `?country=${encodeURIComponent(country)}` : ""}`,
+      ),
+  });
+  const { data: live } = useQuery({
+    queryKey: ["live-departures"],
+    queryFn: () => api.get<LiveDeparture[]>("/marketplace/departures/live"),
   });
 
-  const countries = Array.from(new Set(data?.map((l) => l.organization.country) ?? [])).sort();
+  const countries = Array.from(
+    new Set(data?.map((l) => l.organization.country) ?? []),
+  ).sort();
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-b from-sunset-50 via-clay-50 to-acacia-50">
-      <div className="absolute -top-32 left-1/2 -translate-x-1/2 h-72 w-[36rem] rounded-full bg-sunset-300/30 blur-3xl" aria-hidden />
-      <AcaciaSilhouette className="hidden md:block absolute bottom-8 right-8 h-20 w-20 text-acacia-800/10 lg:h-28 lg:w-28" />
+    <div className="min-h-screen bg-ivory">
+      {/* ---------------------------------------------------------------- */}
+      {/* Hero */}
+      {/* ---------------------------------------------------------------- */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-earth-900 via-earth-800 to-forest-800 text-white">
+        <PublicHeader transparent />
+        <RouteLine className="absolute top-1/3 left-0 w-full h-16 text-brass-400/20" />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,theme(colors.forest.600/25),transparent_55%)]"
+          aria-hidden
+        />
 
-      <div className="relative max-w-5xl mx-auto px-4 sm:px-6 py-10">
-        <p className="text-xs uppercase tracking-[0.15em] text-clay-700 font-medium">Safari Junction's Adventures</p>
-        <h1 className="font-display text-3xl font-semibold text-clay-800 mt-1">Browse safaris across Africa</h1>
-        <p className="text-sm text-stone-600 mt-2 max-w-xl">
-          Every trip below is offered by a verified operator on this platform. Find one you like and send a no-obligation enquiry —
-          no account needed.
-        </p>
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 pt-40 pb-28 sm:pt-48 sm:pb-36 text-center">
+          <p className="text-xs tracking-widest2 uppercase text-brass-300 font-medium mb-5">
+            Safaris · People · Places · Departures
+          </p>
+          <h1 className="font-display text-5xl sm:text-6xl lg:text-7xl font-medium leading-[1.05] text-white">
+            Africa, your way.
+          </h1>
+          <p className="mt-6 text-base sm:text-lg text-white/70 max-w-xl mx-auto">
+            Discover the wild differently — browse verified operators, join a
+            live departure, or have Africa's own guides build your trip from
+            scratch.
+          </p>
+        </div>
+      </section>
 
-        {countries.length > 1 && (
-          <div className="mt-6 flex items-center gap-2">
-            <label className="text-xs text-stone-500">Country</label>
-            <select className="border border-stone-300 rounded-lg px-3 py-1.5 text-sm bg-white" value={country} onChange={(e) => setCountry(e.target.value)}>
-              <option value="">All</option>
+      {/* Search card, overlapping the hero's bottom edge — deliberately
+          outside the hero <section> above (which has overflow-hidden for
+          the route-line/gradient decoration) so this isn't clipped where
+          it extends past the hero's bottom edge. */}
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 -mt-14 sm:-mt-16">
+        <div className="bg-white rounded-sm shadow-xl shadow-earth-900/20 p-5 sm:p-6 grid grid-cols-2 sm:grid-cols-5 gap-4 sm:items-stretch">
+          <Field label="Where?">
+            <select
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="atlas-input"
+            >
+              <option value="">All of Africa</option>
               {countries.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
             </select>
-          </div>
-        )}
-
-        {isLoading && <p className="text-sm text-stone-500 mt-8">Loading…</p>}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-8">
-          {data?.map((listing) => (
-            <Link
-              key={listing.id}
-              to="/marketplace/$id"
-              params={{ id: listing.id }}
-              className="block bg-white rounded-2xl shadow-sm shadow-clay-900/5 border border-white hover:shadow-md transition p-5"
+          </Field>
+          <Field label="Safari type">
+            <select className="atlas-input" defaultValue={SAFARI_TYPES[0]}>
+              {SAFARI_TYPES.map((t) => (
+                <option key={t}>{t}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Budget">
+            <select className="atlas-input" defaultValue={BUDGETS[0]}>
+              {BUDGETS.map((b) => (
+                <option key={b}>{b}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Travelers">
+            <select className="atlas-input" defaultValue="2 adults">
+              <option>1 adult</option>
+              <option>2 adults</option>
+              <option>3+ adults</option>
+            </select>
+          </Field>
+          <div className="col-span-2 sm:col-span-1 flex flex-col justify-end">
+            <a
+              href="#safaris"
+              className="bg-forest-700 hover:bg-forest-800 text-white text-sm font-medium tracking-wide uppercase py-2.5 rounded-sm text-center transition"
             >
-              <p className="text-xs text-acacia-700 font-medium">{listing.organization.name} · {listing.organization.country}</p>
-              <h2 className="font-display text-lg font-semibold text-clay-800 mt-1">{listing.title}</h2>
-              <p className="text-sm text-stone-500 mt-1.5">{listing.summary}</p>
-              <p className="text-xs text-stone-400 mt-3">{listing.durationDays} days</p>
-            </Link>
-          ))}
+              Search
+            </a>
+          </div>
         </div>
-
-        {data?.length === 0 && !isLoading && <p className="text-sm text-stone-400 mt-10 text-center">No listings yet — check back soon.</p>}
       </div>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Live Joining Safaris */}
+      {/* ---------------------------------------------------------------- */}
+      <section
+        id="live-departures"
+        className="pt-28 sm:pt-32 pb-16 sm:pb-20 bg-ivory"
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex items-end justify-between gap-4 mb-8">
+            <div>
+              <p className="text-xs tracking-widest2 uppercase text-savannah-600 font-medium mb-2">
+                Live · Departing soon
+              </p>
+              <h2 className="font-display text-3xl sm:text-4xl text-forest-800">
+                Join a safari
+              </h2>
+            </div>
+          </div>
+
+          {!live?.length && (
+            <p className="text-sm text-savannah-700">
+              No live departures open right now — check back soon.
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {live?.map((d) => {
+              const availability = seatAvailability(
+                d.seatsAvailable,
+                d.totalSeats,
+              );
+              return (
+                <Link
+                  key={d.id}
+                  to="/marketplace/departures/$departureId"
+                  params={{ departureId: d.id }}
+                  className="group block bg-white border border-sand-200 hover:border-forest-300 transition p-5"
+                >
+                  <p className="text-[11px] tracking-widest2 uppercase text-savannah-600 font-medium">
+                    {d.tourTemplate.organization.country} · Joining Safari
+                  </p>
+                  <h3 className="font-display text-xl text-forest-800 mt-1.5 group-hover:text-forest-700">
+                    {d.tourTemplate.title}
+                  </h3>
+                  <p className="text-xs text-earth-500 mt-1">
+                    {new Date(d.departureDate).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}{" "}
+                    · {d.tourTemplate.durationDays} days ·{" "}
+                    {d.tourTemplate.organization.name}
+                  </p>
+
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-sand-100">
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${availability.dot}`}
+                      />
+                      <span className={`font-medium ${availability.text}`}>
+                        {d.seatsAvailable} of {d.totalSeats} seats
+                      </span>
+                    </div>
+                    <p className="font-display text-lg text-forest-800">
+                      {d.currency} {Number(d.pricePerSeat).toLocaleString()}
+                      <span className="text-xs text-earth-400 font-sans">
+                        {" "}
+                        pp
+                      </span>
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Full marketplace grid */}
+      {/* ---------------------------------------------------------------- */}
+      <section id="safaris" className="py-16 sm:py-20 bg-sand-100">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <p className="text-xs tracking-widest2 uppercase text-savannah-600 font-medium mb-2">
+            Every operator, every safari
+          </p>
+          <h2 className="font-display text-3xl sm:text-4xl text-forest-800 mb-8">
+            Browse safaris across Africa
+          </h2>
+
+          {isLoading && <p className="text-sm text-savannah-700">Loading…</p>}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {data?.map((listing) => (
+              <Link
+                key={listing.id}
+                to="/marketplace/$id"
+                params={{ id: listing.id }}
+                className="block bg-white border border-sand-200 hover:border-forest-300 transition p-5"
+              >
+                <p className="text-[11px] tracking-widest2 uppercase text-savannah-600 font-medium">
+                  {listing.organization.name} · {listing.organization.country}
+                </p>
+                <h3 className="font-display text-xl text-forest-800 mt-1.5">
+                  {listing.title}
+                </h3>
+                <p className="text-sm text-earth-500 mt-1.5 line-clamp-2">
+                  {listing.summary}
+                </p>
+                <p className="text-xs text-savannah-500 mt-3">
+                  {listing.durationDays} days
+                </p>
+              </Link>
+            ))}
+          </div>
+
+          {data?.length === 0 && !isLoading && (
+            <p className="text-sm text-savannah-500 mt-10 text-center">
+              No listings yet — check back soon.
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Footer */}
+      {/* ---------------------------------------------------------------- */}
+      <footer className="bg-earth-800 text-white/70 py-14">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-2 sm:grid-cols-4 gap-8 text-sm">
+          <div>
+            <p className="font-display text-lg text-white mb-3">SAFARI ATLAS</p>
+            <p className="text-white/50 text-xs max-w-xs">
+              A luxury African safari marketplace — live departures, verified
+              operators, guides and agents.
+            </p>
+          </div>
+          <div>
+            <p className="text-white/40 text-[11px] tracking-widest2 uppercase mb-3">
+              Safaris
+            </p>
+            <a
+              href="/marketplace"
+              className="block hover:text-white transition mb-1.5"
+            >
+              All safaris
+            </a>
+            <a
+              href="#live-departures"
+              className="block hover:text-white transition mb-1.5"
+            >
+              Joining safaris
+            </a>
+          </div>
+          <div>
+            <p className="text-white/40 text-[11px] tracking-widest2 uppercase mb-3">
+              For professionals
+            </p>
+            <Link
+              to="/register"
+              className="block hover:text-white transition mb-1.5"
+            >
+              Become an operator
+            </Link>
+            <Link
+              to="/register"
+              className="block hover:text-white transition mb-1.5"
+            >
+              Become a guide
+            </Link>
+            <Link
+              to="/register"
+              className="block hover:text-white transition mb-1.5"
+            >
+              Become an agent
+            </Link>
+          </div>
+          <div>
+            <p className="text-white/40 text-[11px] tracking-widest2 uppercase mb-3">
+              Account
+            </p>
+            <Link
+              to="/login"
+              className="block hover:text-white transition mb-1.5"
+            >
+              Sign in
+            </Link>
+            <Link
+              to="/register"
+              className="block hover:text-white transition mb-1.5"
+            >
+              Join the platform
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
+  );
+}
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="block col-span-1">
+      <span className="block text-[11px] tracking-wide uppercase text-earth-400 mb-1.5">
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }

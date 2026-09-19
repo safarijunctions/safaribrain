@@ -14,8 +14,8 @@ const COMPLIANCE_LABELS: Record<Vehicle["complianceStatus"], string> = {
 };
 
 const COMPLIANCE_COLORS: Record<Vehicle["complianceStatus"], string> = {
-  OK: "bg-acacia-100 text-acacia-800",
-  EXPIRING_SOON: "bg-sunset-100 text-sunset-700",
+  OK: "bg-moss-100 text-moss-800",
+  EXPIRING_SOON: "bg-brass-100 text-brass-700",
   EXPIRED: "bg-red-100 text-red-700",
   NOT_TRACKED: "bg-stone-100 text-stone-500",
 };
@@ -53,7 +53,7 @@ export function FleetPanel() {
               setEditing(null);
               setShowForm((s) => !s);
             }}
-            className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition"
+            className="bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-forest-900/10 transition"
           >
             {showForm && !editing ? "Close" : "+ Add vehicle"}
           </button>
@@ -64,7 +64,7 @@ export function FleetPanel() {
 
       {isLoading && <p className="text-sm text-stone-500">Loading…</p>}
 
-      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-clay-900/5 overflow-hidden">
+      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-forest-900/5 overflow-hidden">
         {vehicles?.map((v) => (
           <div key={v.id} className="px-5 py-4 flex items-center justify-between gap-2 flex-wrap">
             <div>
@@ -86,7 +86,7 @@ export function FleetPanel() {
                       setEditing(v);
                       setShowForm(true);
                     }}
-                    className="text-clay-700 hover:underline"
+                    className="text-forest-700 hover:underline"
                   >
                     Edit
                   </button>
@@ -132,7 +132,7 @@ function VehicleForm({ vehicle, onSaved, onCancel }: { vehicle: Vehicle | null; 
   });
 
   return (
-    <div className="border border-stone-200 rounded-xl p-4 bg-clay-50/40 space-y-3">
+    <div className="border border-stone-200 rounded-xl p-4 bg-forest-50/40 space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="block text-xs font-medium mb-1">Name</label>
@@ -174,7 +174,7 @@ function VehicleForm({ vehicle, onSaved, onCancel }: { vehicle: Vehicle | null; 
         <button
           onClick={() => save.mutate()}
           disabled={!name || !registrationNumber || !capacity || save.isPending}
-          className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition disabled:opacity-50"
+          className="bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-forest-900/10 transition disabled:opacity-50"
         >
           {save.isPending ? "Saving…" : "Save vehicle"}
         </button>

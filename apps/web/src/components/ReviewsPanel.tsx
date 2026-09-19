@@ -40,7 +40,7 @@ export function ReviewsPanel() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-3 py-2 text-xs font-medium border-b-2 -mb-px ${tab === t ? "border-clay-600 text-clay-700" : "border-transparent text-stone-500 hover:text-stone-700"}`}
+            className={`px-3 py-2 text-xs font-medium border-b-2 -mb-px ${tab === t ? "border-forest-600 text-forest-700" : "border-transparent text-stone-500 hover:text-stone-700"}`}
           >
             {t.charAt(0) + t.slice(1).toLowerCase()}
           </button>
@@ -54,7 +54,7 @@ export function ReviewsPanel() {
 
       <div className="space-y-3">
         {data?.map((r) => (
-          <div key={r.id} className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm shadow-clay-900/5 space-y-2">
+          <div key={r.id} className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm shadow-forest-900/5 space-y-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <p className="text-sm font-medium text-stone-800">
@@ -64,7 +64,7 @@ export function ReviewsPanel() {
               </div>
               {tab === "PENDING" && (
                 <div className="flex gap-2 text-xs">
-                  <button onClick={() => moderate.mutate({ id: r.id, decision: "PUBLISH" })} className="bg-acacia-600 hover:bg-acacia-700 text-white rounded px-3 py-1.5 font-medium">
+                  <button onClick={() => moderate.mutate({ id: r.id, decision: "PUBLISH" })} className="bg-moss-600 hover:bg-moss-700 text-white rounded px-3 py-1.5 font-medium">
                     Publish
                   </button>
                   <button onClick={() => moderate.mutate({ id: r.id, decision: "REJECT" })} className="border border-stone-300 rounded px-3 py-1.5">
@@ -87,7 +87,7 @@ export function ReviewsPanel() {
                 <button
                   onClick={() => reply.mutate({ id: r.id, text: replyDrafts[r.id] ?? "" })}
                   disabled={!replyDrafts[r.id] || reply.isPending}
-                  className="text-xs font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+                  className="text-xs font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
                 >
                   Reply
                 </button>

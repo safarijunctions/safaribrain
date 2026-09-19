@@ -15,14 +15,14 @@ export function MessagesPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
-      <h1 className="font-display text-2xl font-semibold text-clay-800 mb-1">Messages</h1>
+      <h1 className="font-display text-2xl font-semibold text-forest-800 mb-1">Messages</h1>
       <p className="text-sm text-stone-500 mb-6">Talk directly with the operators, guides, agents, and vehicle owners you trade with.</p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="sm:col-span-1 bg-white border border-stone-200 rounded-xl shadow-sm shadow-clay-900/5 overflow-hidden">
+        <div className="sm:col-span-1 bg-white border border-stone-200 rounded-xl shadow-sm shadow-forest-900/5 overflow-hidden">
           <div className="px-4 py-2.5 border-b border-stone-100 flex items-center justify-between">
             <p className="text-sm font-medium">Conversations</p>
-            <button onClick={() => setStartingWith("new")} className="text-xs text-clay-700 hover:underline">
+            <button onClick={() => setStartingWith("new")} className="text-xs text-forest-700 hover:underline">
               + New
             </button>
           </div>
@@ -41,7 +41,7 @@ export function MessagesPage() {
               <li key={c.id}>
                 <button
                   onClick={() => setActiveId(c.id)}
-                  className={`w-full text-left px-4 py-2.5 text-sm hover:bg-stone-50 ${activeId === c.id ? "bg-clay-50" : ""}`}
+                  className={`w-full text-left px-4 py-2.5 text-sm hover:bg-stone-50 ${activeId === c.id ? "bg-forest-50" : ""}`}
                 >
                   <p className="font-medium">{c.counterpart.name}</p>
                   <p className="text-xs text-stone-500 truncate">{c.lastMessage?.body ?? "No messages yet"}</p>
@@ -52,7 +52,7 @@ export function MessagesPage() {
           </ul>
         </div>
 
-        <div className="sm:col-span-2 bg-white border border-stone-200 rounded-xl shadow-sm shadow-clay-900/5 overflow-hidden flex flex-col h-[32rem]">
+        <div className="sm:col-span-2 bg-white border border-stone-200 rounded-xl shadow-sm shadow-forest-900/5 overflow-hidden flex flex-col h-[32rem]">
           {activeId ? <ConversationThread conversationId={activeId} /> : <p className="m-auto text-sm text-stone-400">Select a conversation.</p>}
         </div>
       </div>
@@ -85,7 +85,7 @@ function NewConversation({ onStarted, onCancel }: { onStarted: (id: string) => v
         <button
           disabled={!counterpartOrganizationId || !body || start.isPending}
           onClick={() => start.mutate()}
-          className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+          className="font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
         >
           Send
         </button>
@@ -129,7 +129,7 @@ function ConversationThread({ conversationId }: { conversationId: string }) {
           const mine = m.senderOrganizationId === user?.organizationId;
           return (
             <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[75%] rounded-lg px-3 py-1.5 text-sm ${mine ? "bg-clay-600 text-white" : "bg-stone-100 text-stone-800"}`}>
+              <div className={`max-w-[75%] rounded-lg px-3 py-1.5 text-sm ${mine ? "bg-forest-600 text-white" : "bg-stone-100 text-stone-800"}`}>
                 {m.body}
                 <div className={`text-[10px] mt-0.5 ${mine ? "text-white/70" : "text-stone-400"}`}>{new Date(m.createdAt).toLocaleTimeString()}</div>
               </div>
@@ -139,7 +139,7 @@ function ConversationThread({ conversationId }: { conversationId: string }) {
       </div>
       <form onSubmit={onSubmit} className="border-t border-stone-100 p-2 flex gap-2">
         <input className="flex-1 border border-stone-300 rounded-lg px-3 py-2 text-sm" placeholder="Type a message…" value={body} onChange={(e) => setBody(e.target.value)} />
-        <button type="submit" disabled={!body.trim() || send.isPending} className="bg-clay-600 hover:bg-clay-700 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50">
+        <button type="submit" disabled={!body.trim() || send.isPending} className="bg-forest-600 hover:bg-forest-700 text-white rounded-lg px-4 py-2 text-sm disabled:opacity-50">
           Send
         </button>
       </form>

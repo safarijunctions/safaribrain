@@ -5,8 +5,8 @@ import { Booking, Vehicle } from "../types";
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-stone-100 text-stone-700",
-  CONFIRMED: "bg-sunset-100 text-sunset-700",
-  PAID: "bg-acacia-100 text-acacia-800",
+  CONFIRMED: "bg-brass-100 text-brass-700",
+  PAID: "bg-moss-100 text-moss-800",
   ACTIVE: "bg-blue-100 text-blue-800",
   COMPLETED: "bg-stone-200 text-stone-700",
   CANCELLED: "bg-red-100 text-red-700",
@@ -16,7 +16,7 @@ const PAYMENT_METHODS = ["BANK_TRANSFER", "CASH", "MOBILE_MONEY_MANUAL"] as cons
 
 const CONFIRMATION_STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-stone-100 text-stone-700",
-  CONFIRMED: "bg-acacia-100 text-acacia-800",
+  CONFIRMED: "bg-moss-100 text-moss-800",
   DECLINED: "bg-red-100 text-red-700",
 };
 
@@ -133,10 +133,10 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
   const ticketReady = ["PAID", "ACTIVE", "COMPLETED"].includes(booking.status);
 
   return (
-    <div className="border border-stone-200 rounded-xl p-4 shadow-sm shadow-clay-900/5 space-y-4">
+    <div className="border border-stone-200 rounded-xl p-4 shadow-sm shadow-forest-900/5 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[booking.status] ?? "bg-stone-100"}`}>{booking.status}</span>
-        <p className="font-display text-lg font-semibold text-clay-800">
+        <p className="font-display text-lg font-semibold text-forest-800">
           {booking.currency} {Number(booking.amountPaid).toLocaleString()} / {Number(booking.totalPrice).toLocaleString()}
           {balanceDue > 0 && <span className="text-xs text-stone-400 font-normal ml-1.5">({booking.currency} {balanceDue.toLocaleString()} due)</span>}
         </p>
@@ -146,7 +146,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
         <button
           onClick={() => markCompleted.mutate()}
           disabled={markCompleted.isPending}
-          className="text-xs font-medium border border-acacia-300 text-acacia-700 hover:bg-acacia-50 rounded px-3 py-1.5 disabled:opacity-50"
+          className="text-xs font-medium border border-moss-300 text-moss-700 hover:bg-moss-50 rounded px-3 py-1.5 disabled:opacity-50"
         >
           {markCompleted.isPending ? "Marking…" : "Mark trip completed"}
         </button>
@@ -170,7 +170,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
           ))}
         </ul>
         {!showTravelerForm ? (
-          <button onClick={() => setShowTravelerForm(true)} className="text-xs text-clay-700 hover:underline mt-1.5">
+          <button onClick={() => setShowTravelerForm(true)} className="text-xs text-forest-700 hover:underline mt-1.5">
             + Add traveler
           </button>
         ) : (
@@ -198,7 +198,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
               <button
                 onClick={() => addTraveler.mutate()}
                 disabled={!travelerName || addTraveler.isPending}
-                className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+                className="font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
               >
                 Add
               </button>
@@ -221,7 +221,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
                 <>
                   {booking.vehicle.name} ({booking.vehicle.registrationNumber})
                   {booking.vehicle.complianceStatus !== "OK" && booking.vehicle.complianceStatus !== "NOT_TRACKED" && (
-                    <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${booking.vehicle.complianceStatus === "EXPIRED" ? "bg-red-100 text-red-700" : "bg-sunset-100 text-sunset-700"}`}>
+                    <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${booking.vehicle.complianceStatus === "EXPIRED" ? "bg-red-100 text-red-700" : "bg-brass-100 text-brass-700"}`}>
                       {booking.vehicle.complianceStatus === "EXPIRED" ? "compliance expired" : "compliance expiring soon"}
                     </span>
                   )}
@@ -231,7 +231,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
               )}
             </p>
             {booking.pickupNotes && <p className="text-xs text-stone-500">{booking.pickupNotes}</p>}
-            <button onClick={() => setShowLogisticsForm(true)} className="text-xs text-clay-700 hover:underline mt-1">
+            <button onClick={() => setShowLogisticsForm(true)} className="text-xs text-forest-700 hover:underline mt-1">
               {booking.guideName || booking.vehicle ? "Edit" : "+ Assign guide/vehicle"}
             </button>
           </div>
@@ -268,7 +268,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
               <button
                 onClick={() => updateLogistics.mutate()}
                 disabled={updateLogistics.isPending}
-                className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+                className="font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
               >
                 Save
               </button>
@@ -306,7 +306,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
                     />
                     <button
                       onClick={() => updateSupplierConfirmation.mutate({ id: c.id, status: "CONFIRMED" })}
-                      className="text-xs text-acacia-700 hover:underline"
+                      className="text-xs text-moss-700 hover:underline"
                     >
                       Confirm
                     </button>
@@ -323,7 +323,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
           ))}
         </ul>
         {!showSupplierForm ? (
-          <button onClick={() => setShowSupplierForm(true)} className="text-xs text-clay-700 hover:underline mt-1.5">
+          <button onClick={() => setShowSupplierForm(true)} className="text-xs text-forest-700 hover:underline mt-1.5">
             + Add supplier confirmation
           </button>
         ) : (
@@ -350,7 +350,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
               <button
                 onClick={() => addSupplierConfirmation.mutate()}
                 disabled={!supplierName || addSupplierConfirmation.isPending}
-                className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+                className="font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
               >
                 Add
               </button>
@@ -380,7 +380,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
         </ul>
         {booking.status !== "CANCELLED" &&
           (!showPaymentForm ? (
-            <button onClick={() => setShowPaymentForm(true)} className="text-xs text-clay-700 hover:underline mt-1.5">
+            <button onClick={() => setShowPaymentForm(true)} className="text-xs text-forest-700 hover:underline mt-1.5">
               + Record payment
             </button>
           ) : (
@@ -409,7 +409,7 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
                 <button
                   onClick={() => recordPayment.mutate()}
                   disabled={!paymentAmount || recordPayment.isPending}
-                  className="flex-1 font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-2 py-1.5 disabled:opacity-50"
+                  className="flex-1 font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-2 py-1.5 disabled:opacity-50"
                 >
                   Record
                 </button>
@@ -424,15 +424,15 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
 
       {/* Documents */}
       <div className="flex flex-wrap items-center gap-3 text-xs border-t border-stone-100 pt-3">
-        <a href={`/api/bookings/public/${booking.ticketToken}/receipt.pdf`} target="_blank" rel="noreferrer" className="text-clay-700 underline">
+        <a href={`/api/bookings/public/${booking.ticketToken}/receipt.pdf`} target="_blank" rel="noreferrer" className="text-forest-700 underline">
           Receipt PDF
         </a>
         {ticketReady && (
-          <a href={`/api/bookings/public/${booking.ticketToken}/eticket.pdf`} target="_blank" rel="noreferrer" className="text-clay-700 underline">
+          <a href={`/api/bookings/public/${booking.ticketToken}/eticket.pdf`} target="_blank" rel="noreferrer" className="text-forest-700 underline">
             E-ticket PDF
           </a>
         )}
-        <button onClick={downloadManifest} className="text-clay-700 underline" title="Internal only — includes passport numbers, never shown to the client">
+        <button onClick={downloadManifest} className="text-forest-700 underline" title="Internal only — includes passport numbers, never shown to the client">
           Guide manifest PDF
         </button>
         <a href={statusUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline break-all">

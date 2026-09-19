@@ -59,7 +59,7 @@ export function ReplyDraftPanel({ requestId }: { requestId: string }) {
       <button
         onClick={() => generate.mutate()}
         disabled={generate.isPending}
-        className="text-xs font-medium border border-clay-300 text-clay-700 hover:bg-clay-50 rounded px-3 py-1.5 disabled:opacity-50"
+        className="text-xs font-medium border border-forest-300 text-forest-700 hover:bg-forest-50 rounded px-3 py-1.5 disabled:opacity-50"
       >
         {generate.isPending ? "Drafting…" : "Draft AI reply"}
       </button>
@@ -68,7 +68,7 @@ export function ReplyDraftPanel({ requestId }: { requestId: string }) {
       {isLoading && <p className="text-xs text-stone-400">Loading…</p>}
 
       {pending.map((job) => (
-        <div key={job.id} className="border border-sunset-200 bg-sunset-50/50 rounded-lg p-3 space-y-2">
+        <div key={job.id} className="border border-brass-200 bg-brass-50/50 rounded-lg p-3 space-y-2">
           <textarea
             className="w-full border border-stone-300 rounded px-2 py-1.5 text-xs"
             rows={6}
@@ -79,7 +79,7 @@ export function ReplyDraftPanel({ requestId }: { requestId: string }) {
             <button
               onClick={() => copyAndApprove(job)}
               disabled={approve.isPending}
-              className="text-xs font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+              className="text-xs font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
             >
               {copiedId === job.id ? "Copied!" : "Approve & copy"}
             </button>

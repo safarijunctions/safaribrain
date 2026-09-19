@@ -57,7 +57,7 @@ export function ContentPanel() {
         {canManage && (
           <button
             onClick={() => setShowForm((s) => !s)}
-            className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition"
+            className="bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-forest-900/10 transition"
           >
             {showForm ? "Close" : "+ Add place"}
           </button>
@@ -68,7 +68,7 @@ export function ContentPanel() {
 
       {isLoading && <p className="text-sm text-stone-500">Loading…</p>}
 
-      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-clay-900/5 overflow-hidden">
+      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-forest-900/5 overflow-hidden">
         {places?.map((p) => (
           <div key={p.id} className="px-5 py-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -79,7 +79,7 @@ export function ContentPanel() {
                 <p className="text-xs text-stone-500 mt-0.5">{p.feeRules.length} fee rule{p.feeRules.length === 1 ? "" : "s"}</p>
               </div>
               <div className="flex items-center gap-3 text-xs">
-                <button onClick={() => setExpandedId(expandedId === p.id ? null : p.id)} className="text-clay-700 hover:underline">
+                <button onClick={() => setExpandedId(expandedId === p.id ? null : p.id)} className="text-forest-700 hover:underline">
                   {expandedId === p.id ? "Hide fee rules" : "Fee rules"}
                 </button>
                 {canManage && (
@@ -114,7 +114,7 @@ function PlaceForm({ onSaved }: { onSaved: () => void }) {
   });
 
   return (
-    <div className="border border-stone-200 rounded-xl p-4 bg-clay-50/40 space-y-3">
+    <div className="border border-stone-200 rounded-xl p-4 bg-forest-50/40 space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label className="block text-xs font-medium mb-1">Name</label>
@@ -143,7 +143,7 @@ function PlaceForm({ onSaved }: { onSaved: () => void }) {
       <button
         onClick={() => save.mutate()}
         disabled={!name || country.length !== 2 || save.isPending}
-        className="bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-clay-900/10 transition disabled:opacity-50"
+        className="bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white text-sm font-medium rounded-lg px-4 py-2 shadow-sm shadow-forest-900/10 transition disabled:opacity-50"
       >
         {save.isPending ? "Saving…" : "Save place"}
       </button>
@@ -212,7 +212,7 @@ function FeeRulesEditor({ place, canEdit, onChanged }: { place: Place; canEdit: 
 
       {canEdit &&
         (!showForm ? (
-          <button onClick={() => setShowForm(true)} className="text-xs text-clay-700 hover:underline">
+          <button onClick={() => setShowForm(true)} className="text-xs text-forest-700 hover:underline">
             + Add fee rule
           </button>
         ) : (
@@ -247,7 +247,7 @@ function FeeRulesEditor({ place, canEdit, onChanged }: { place: Place; canEdit: 
               <button
                 onClick={() => add.mutate()}
                 disabled={!label || !amount || add.isPending}
-                className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+                className="font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
               >
                 Save
               </button>

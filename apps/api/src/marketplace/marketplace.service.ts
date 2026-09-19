@@ -3,6 +3,7 @@ import { LeadSourceChannel } from "@safaribrain/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { CrmService } from "../crm/crm.service";
 import { MarketplaceEnquiryDto } from "./dto/marketplace-enquiry.dto";
+import { fromJsonField } from "../common/json-field";
 
 // Phase 3 (§7) marketplace — public, cross-organization browsing. Every
 // query here is scoped to publiclyListed=true templates belonging to a
@@ -31,6 +32,44 @@ export class MarketplaceService {
     });
   }
 
+  // Cross-template "departing soon" feed for the homepage's Live Joining
+  // Safaris strip — the per-template departures endpoints
+  // (DeparturesService.listPublicForTemplate) only ever look at one
+  // template at a time, which is right for a listing page but can't
+  // power a homepage feed spanning every operator's inventory. Same
+  // trust-domain scoping as everything else in this service (publicly
+  // listed + verified org), plus OPEN status and a future departure date.
+  async listLiveDepartures(limit = 12) {
+    const departures = await this.prisma.departure.findMany({
+      where: {
+        status: "OPEN",
+        departureDate: { gte: new Date() },
+        tourTemplate: { publiclyListed: true, organization: { verified: true } },
+      },
+      include: {
+        tourTemplate: { select: { title: true, durationDays: true, organization: { select: { name: true, country: true } } } },
+        seats: { select: { status: true, heldUntil: true } },
+      },
+      orderBy: { departureDate: "asc" },
+      take: limit,
+    });
+
+    const now = new Date();
+    return departures.map((d) => {
+      const booked = d.seats.filter((s) => s.status === "BOOKED" || (s.status === "HELD" && s.heldUntil && s.heldUntil > now)).length;
+      const available = d.totalSeats - booked;
+      return {
+        id: d.id,
+        departureDate: d.departureDate,
+        currency: d.currency,
+        pricePerSeat: d.pricePerSeat,
+        totalSeats: d.totalSeats,
+        seatsAvailable: available,
+        tourTemplate: d.tourTemplate,
+      };
+    });
+  }
+
   async getTemplate(id: string) {
     const template = await this.prisma.tourTemplate.findFirst({
       where: { id, publiclyListed: true, organization: { verified: true } },
@@ -44,7 +83,13 @@ export class MarketplaceService {
       },
     });
     if (!template) throw new NotFoundException("Listing not found");
-    return template;
+    return {
+      ...template,
+      versions: template.versions.map((v) => ({
+        ...v,
+        days: v.days.map((d) => ({ ...d, mealsIncluded: fromJsonField<string[]>(d.mealsIncluded, []) })),
+      })),
+    };
   }
 
   // Routes straight into the same CrmService the operator's "new enquiry"

@@ -51,13 +51,13 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10 bg-gradient-to-b from-sunset-50 via-clay-50 to-acacia-50">
-      <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-sunset-300/40 blur-3xl" aria-hidden />
-      <AcaciaSilhouette className="absolute bottom-0 right-6 h-40 w-40 text-acacia-800/15 sm:h-56 sm:w-56" />
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4 py-10 bg-gradient-to-b from-brass-50 via-forest-50 to-moss-50">
+      <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-brass-300/40 blur-3xl" aria-hidden />
+      <AcaciaSilhouette className="absolute bottom-0 right-6 h-40 w-40 text-moss-800/15 sm:h-56 sm:w-56" />
 
-      <form onSubmit={onSubmit} className="relative bg-white/90 backdrop-blur-sm shadow-xl shadow-clay-900/10 rounded-2xl p-8 w-full max-w-md border border-white/60">
-        <div className="h-1 w-16 rounded-full bg-gradient-to-r from-clay-500 to-sunset-400 mb-5" />
-        <h1 className="font-display text-3xl font-semibold text-clay-800 mb-1">Join SafariBrain</h1>
+      <form onSubmit={onSubmit} className="relative bg-white/90 backdrop-blur-sm shadow-xl shadow-forest-900/10 rounded-2xl p-8 w-full max-w-md border border-white/60">
+        <div className="h-1 w-16 rounded-full bg-gradient-to-r from-forest-500 to-brass-400 mb-5" />
+        <h1 className="font-display text-3xl font-semibold text-forest-800 mb-1">Join Safari Atlas</h1>
         <p className="text-sm text-stone-500 mb-6">Sell your own safaris, join the trade marketplace, and connect with other operators.</p>
 
         <label className="block text-sm font-medium text-stone-700 mb-1.5">I am a...</label>
@@ -66,7 +66,7 @@ export function RegisterPage() {
             <label
               key={k.value}
               className={`flex items-start gap-2 border rounded-lg px-3 py-2 cursor-pointer text-sm ${
-                kind === k.value ? "border-clay-500 bg-clay-50" : "border-stone-200"
+                kind === k.value ? "border-forest-500 bg-forest-50" : "border-stone-200"
               }`}
             >
               <input type="radio" className="mt-0.5" checked={kind === k.value} onChange={() => setKind(k.value)} />
@@ -112,7 +112,7 @@ export function RegisterPage() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white rounded-lg py-2.5 text-sm font-medium shadow-sm shadow-clay-900/20 transition disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-forest-600 to-forest-700 hover:from-forest-700 hover:to-forest-800 text-white rounded-lg py-2.5 text-sm font-medium shadow-sm shadow-forest-900/20 transition disabled:opacity-50"
         >
           {submitting ? "Creating account…" : "Create account"}
         </button>
@@ -121,7 +121,7 @@ export function RegisterPage() {
           Your organization starts unverified — an admin verifies you before your listings or trade departures are visible to anyone else.
         </p>
         <p className="text-sm text-stone-500 mt-4 text-center">
-          Already have an account? <Link to="/login" className="text-clay-700 hover:underline">Sign in</Link>
+          Already have an account? <Link to="/login" className="text-forest-700 hover:underline">Sign in</Link>
         </p>
       </form>
     </div>

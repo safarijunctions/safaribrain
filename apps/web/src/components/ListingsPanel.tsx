@@ -25,7 +25,7 @@ export function ListingsPanel() {
         departure on a template to sell it as an instant, seat-map booking alongside the usual custom-quote flow.
       </p>
       {isLoading && <p className="text-sm text-stone-500">Loading…</p>}
-      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-clay-900/5 overflow-hidden">
+      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-forest-900/5 overflow-hidden">
         {data?.map((t) => (
           <div key={t.id} className="px-5 py-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -34,7 +34,7 @@ export function ListingsPanel() {
                 <p className="text-xs text-stone-500 mt-0.5">{t.durationDays} days · {t.summary}</p>
               </div>
               <div className="flex items-center gap-3 text-xs shrink-0">
-                <button onClick={() => setExpandedId(expandedId === t.id ? null : t.id)} className="text-clay-700 hover:underline">
+                <button onClick={() => setExpandedId(expandedId === t.id ? null : t.id)} className="text-forest-700 hover:underline">
                   {expandedId === t.id ? "Hide departures" : "Departures"}
                 </button>
                 <label className="flex items-center gap-1.5">
@@ -103,7 +103,7 @@ function DeparturesEditor({ templateId }: { templateId: string }) {
       </ul>
 
       {!showForm ? (
-        <button onClick={() => setShowForm(true)} className="text-xs text-clay-700 hover:underline">
+        <button onClick={() => setShowForm(true)} className="text-xs text-forest-700 hover:underline">
           + Open a departure
         </button>
       ) : (
@@ -116,7 +116,7 @@ function DeparturesEditor({ templateId }: { templateId: string }) {
             <button
               onClick={() => create.mutate()}
               disabled={!departureDate || !pricePerSeat || create.isPending}
-              className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+              className="font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
             >
               Save
             </button>
@@ -161,9 +161,9 @@ function TradePricingRow({
 
   if (tradeVisible && !editing) {
     return (
-      <div className="flex items-center justify-between text-[11px] text-acacia-700 mt-0.5">
+      <div className="flex items-center justify-between text-[11px] text-moss-700 mt-0.5">
         <span>Trade: {currency} {Number(netPricePerSeat).toLocaleString()} net</span>
-        <button onClick={() => setEditing(true)} className="text-clay-700 hover:underline">
+        <button onClick={() => setEditing(true)} className="text-forest-700 hover:underline">
           Edit
         </button>
         <button onClick={() => save.mutate(false)} className="text-stone-500 hover:underline">
@@ -175,7 +175,7 @@ function TradePricingRow({
 
   if (!editing) {
     return (
-      <button onClick={() => setEditing(true)} className="text-[11px] text-clay-700 hover:underline mt-0.5">
+      <button onClick={() => setEditing(true)} className="text-[11px] text-forest-700 hover:underline mt-0.5">
         + Opt into trade marketplace
       </button>
     );
@@ -190,7 +190,7 @@ function TradePricingRow({
         value={value}
         onChange={(e) => setValue(e.target.value)}
       />
-      <button disabled={!value || save.isPending} onClick={() => save.mutate(true)} className="bg-acacia-700 hover:bg-acacia-800 text-white rounded px-2 py-1 disabled:opacity-50">
+      <button disabled={!value || save.isPending} onClick={() => save.mutate(true)} className="bg-moss-700 hover:bg-moss-800 text-white rounded px-2 py-1 disabled:opacity-50">
         Save & make trade-visible
       </button>
       <button onClick={() => setEditing(false)} className="text-stone-500">

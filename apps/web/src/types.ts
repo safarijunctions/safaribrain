@@ -138,6 +138,16 @@ export interface PublicDeparture {
   tourTemplate: { title: string; organization: { name: string; country: string } };
 }
 
+export interface LiveDeparture {
+  id: string;
+  departureDate: string;
+  currency: string;
+  pricePerSeat: string;
+  totalSeats: number;
+  seatsAvailable: number;
+  tourTemplate: { title: string; durationDays: number; organization: { name: string; country: string } };
+}
+
 export interface SeatMapSeat {
   id: string;
   label: string;

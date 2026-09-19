@@ -29,7 +29,7 @@ export function AdminPage() {
 
   return (
     <div className={`mx-auto px-4 sm:px-6 py-8 ${tab === "audit" ? "max-w-6xl" : "max-w-4xl"}`}>
-      <h1 className="font-display text-2xl font-semibold text-clay-800 mb-1">Admin Portal</h1>
+      <h1 className="font-display text-2xl font-semibold text-forest-800 mb-1">Admin Portal</h1>
       <p className="text-sm text-stone-500 mb-6">
         Provider credentials, team access, and a full activity trail — everything you need to help a user when something goes wrong.
       </p>
@@ -40,7 +40,7 @@ export function AdminPage() {
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
-              tab === t ? "border-clay-600 text-clay-700" : "border-transparent text-stone-500 hover:text-stone-700"
+              tab === t ? "border-forest-600 text-forest-700" : "border-transparent text-stone-500 hover:text-stone-700"
             }`}
           >
             {TAB_LABELS[t]}

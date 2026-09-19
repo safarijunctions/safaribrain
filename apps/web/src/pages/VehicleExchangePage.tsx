@@ -12,7 +12,7 @@ export function VehicleExchangePage() {
   const [tab, setTab] = useState<"browse" | "my-listings" | "agreements">("browse");
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
-      <h1 className="font-display text-2xl font-semibold text-clay-800 mb-1">Vehicle Exchange</h1>
+      <h1 className="font-display text-2xl font-semibold text-forest-800 mb-1">Vehicle Exchange</h1>
       <p className="text-sm text-stone-500 mb-6">
         Rent a safari vehicle from another operator, guide, or fleet owner — or list your own for other trade partners to rent.
       </p>
@@ -22,7 +22,7 @@ export function VehicleExchangePage() {
             key={t}
             onClick={() => setTab(t)}
             className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
-              tab === t ? "border-clay-600 text-clay-700" : "border-transparent text-stone-500 hover:text-stone-700"
+              tab === t ? "border-forest-600 text-forest-700" : "border-transparent text-stone-500 hover:text-stone-700"
             }`}
           >
             {t === "browse" ? "Browse vehicles" : t === "my-listings" ? "My listings" : "Agreements"}
@@ -44,7 +44,7 @@ function BrowseVehicles() {
   return (
     <div className="space-y-3">
       {data?.map((l) => (
-        <div key={l.id} className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm shadow-clay-900/5">
+        <div key={l.id} className="bg-white border border-stone-200 rounded-xl p-4 shadow-sm shadow-forest-900/5">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <p className="font-medium text-sm">{l.vehicle.name} · {l.vehicle.capacity} seats</p>
@@ -52,9 +52,9 @@ function BrowseVehicles() {
                 {l.organization?.name} ({l.organization?.country}) · {l.vehicle.registrationNumber}
               </p>
             </div>
-            <p className="text-sm font-semibold text-acacia-700 shrink-0">{l.currency} {Number(l.dailyRate).toLocaleString()}/day</p>
+            <p className="text-sm font-semibold text-moss-700 shrink-0">{l.currency} {Number(l.dailyRate).toLocaleString()}/day</p>
           </div>
-          <button onClick={() => setOpenId(openId === l.id ? null : l.id)} className="mt-2 text-xs text-clay-700 hover:underline">
+          <button onClick={() => setOpenId(openId === l.id ? null : l.id)} className="mt-2 text-xs text-forest-700 hover:underline">
             {openId === l.id ? "Cancel" : "Request a rental"}
           </button>
           {openId === l.id && <RequestRentalForm listingId={l.id} onDone={() => setOpenId(null)} />}
@@ -84,7 +84,7 @@ function RequestRentalForm({ listingId, onDone }: { listingId: string; onDone: (
       <button
         disabled={!startDate || !endDate || request.isPending}
         onClick={() => request.mutate()}
-        className="col-span-2 font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+        className="col-span-2 font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
       >
         Send request
       </button>
@@ -101,7 +101,7 @@ function MyListings() {
   return (
     <div className="space-y-4">
       <p className="text-xs text-stone-500">List one of your fleet vehicles so other operators, guides, or agents can request to rent it.</p>
-      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-clay-900/5 overflow-hidden">
+      <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-forest-900/5 overflow-hidden">
         {vehicles?.map((v) => (
           <VehicleListingRow key={v.id} vehicle={v} existing={listings?.find((l) => l.vehicle.id === v.id)} onSaved={refetch} />
         ))}
@@ -134,11 +134,11 @@ function VehicleListingRow({ vehicle, existing, onSaved }: { vehicle: Vehicle; e
           <p className="text-xs text-stone-500">{vehicle.registrationNumber} · {vehicle.capacity} seats</p>
         </div>
         {existing && !editing && (
-          <p className="text-xs text-acacia-700 font-medium">
+          <p className="text-xs text-moss-700 font-medium">
             Listed at {existing.currency} {Number(existing.dailyRate).toLocaleString()}/day ({existing.visibility})
           </p>
         )}
-        <button onClick={() => setEditing((e) => !e)} className="text-xs text-clay-700 hover:underline">
+        <button onClick={() => setEditing((e) => !e)} className="text-xs text-forest-700 hover:underline">
           {editing ? "Cancel" : existing ? "Edit listing" : "List for rent"}
         </button>
       </div>
@@ -150,7 +150,7 @@ function VehicleListingRow({ vehicle, existing, onSaved }: { vehicle: Vehicle; e
             <option value="LISTED">Listed (visible to all trade partners)</option>
             <option value="UNLISTED">Unlisted (share the link privately)</option>
           </select>
-          <button disabled={!dailyRate || save.isPending} onClick={() => save.mutate()} className="col-span-3 font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50">
+          <button disabled={!dailyRate || save.isPending} onClick={() => save.mutate()} className="col-span-3 font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50">
             Save
           </button>
         </div>
@@ -172,7 +172,7 @@ function Agreements() {
   if (data?.length === 0) return <p className="text-sm text-stone-400">No rental agreements yet.</p>;
 
   return (
-    <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-clay-900/5 overflow-hidden">
+    <div className="bg-white border border-stone-200 rounded-xl divide-y shadow-sm shadow-forest-900/5 overflow-hidden">
       {data?.map((a) => (
         <div key={a.id} className="px-5 py-3 text-sm flex items-center justify-between gap-3 flex-wrap">
           <div>
@@ -185,11 +185,11 @@ function Agreements() {
           <div className="text-right text-xs shrink-0 flex items-center gap-2">
             <div>
               <p className="font-semibold">{a.currency} {Number(a.totalPrice).toLocaleString()}</p>
-              <p className={`font-medium ${a.status === "ACCEPTED" ? "text-acacia-700" : a.status === "DECLINED" ? "text-red-600" : "text-amber-600"}`}>{a.status}</p>
+              <p className={`font-medium ${a.status === "ACCEPTED" ? "text-moss-700" : a.status === "DECLINED" ? "text-red-600" : "text-amber-600"}`}>{a.status}</p>
             </div>
             {a.status === "PENDING" && a.ownerOrganizationId === user?.organizationId && (
               <div className="flex gap-1">
-                <button onClick={() => respond.mutate({ id: a.id, decision: "ACCEPTED" })} className="bg-acacia-700 hover:bg-acacia-800 text-white rounded px-2 py-1">
+                <button onClick={() => respond.mutate({ id: a.id, decision: "ACCEPTED" })} className="bg-moss-700 hover:bg-moss-800 text-white rounded px-2 py-1">
                   Accept
                 </button>
                 <button onClick={() => respond.mutate({ id: a.id, decision: "DECLINED" })} className="border border-stone-300 rounded px-2 py-1">
