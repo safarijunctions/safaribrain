@@ -68,9 +68,13 @@ export function MarketplaceListingPage() {
       {/* Header band */}
       <div className="bg-earth-800 text-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
-          <p className="text-xs tracking-widest2 uppercase text-brass-300 font-medium">
+          <Link
+            to="/operators/$id"
+            params={{ id: data.organization.id }}
+            className="text-xs tracking-widest2 uppercase text-brass-300 font-medium hover:text-brass-200 transition"
+          >
             {data.organization.name} · {data.organization.country}
-          </p>
+          </Link>
           <h1 className="font-display text-4xl sm:text-5xl mt-2">
             {data.title}
           </h1>

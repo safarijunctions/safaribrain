@@ -77,7 +77,11 @@ export interface Quote {
   versions: QuoteVersion[];
   approvals: Approval[];
   priceSnapshot?: { totalPrice: string; frozenAt: string } | null;
-  proposalLink?: { token: string; openedAt?: string; acceptedAt?: string } | null;
+  proposalLink?: {
+    token: string;
+    openedAt?: string;
+    acceptedAt?: string;
+  } | null;
 }
 
 export interface EnquiryRequestDetail extends EnquiryRequestSummary {
@@ -109,7 +113,12 @@ export interface ItineraryDay {
 }
 
 export interface TourTemplateDetail extends TourTemplateSummary {
-  versions: { id: string; versionNumber: number; termsMarkdown?: string; days: ItineraryDay[] }[];
+  versions: {
+    id: string;
+    versionNumber: number;
+    termsMarkdown?: string;
+    days: ItineraryDay[];
+  }[];
 }
 
 export interface DepartureSeatSummary {
@@ -135,7 +144,10 @@ export interface PublicDeparture {
   currency: string;
   pricePerSeat: string;
   totalSeats: number;
-  tourTemplate: { title: string; organization: { name: string; country: string } };
+  tourTemplate: {
+    title: string;
+    organization: { id: string; name: string; country: string };
+  };
 }
 
 export interface LiveDeparture {
@@ -145,7 +157,11 @@ export interface LiveDeparture {
   pricePerSeat: string;
   totalSeats: number;
   seatsAvailable: number;
-  tourTemplate: { title: string; durationDays: number; organization: { name: string; country: string } };
+  tourTemplate: {
+    title: string;
+    durationDays: number;
+    organization: { id: string; name: string; country: string };
+  };
 }
 
 export interface SeatMapSeat {
@@ -186,11 +202,43 @@ export interface MarketplaceListingSummary {
   title: string;
   summary?: string | null;
   durationDays: number;
-  organization: { name: string; country: string };
+  organization: { id: string; name: string; country: string };
 }
 
 export interface MarketplaceListingDetail extends MarketplaceListingSummary {
-  versions: { id: string; versionNumber: number; termsMarkdown?: string | null; days: ItineraryDay[] }[];
+  versions: {
+    id: string;
+    versionNumber: number;
+    termsMarkdown?: string | null;
+    days: ItineraryDay[];
+  }[];
+}
+
+export interface OrganizationReview {
+  id: string;
+  reviewerName: string;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  operatorReply?: string | null;
+  createdAt: string;
+}
+
+export interface OrganizationProfile {
+  organization: {
+    id: string;
+    name: string;
+    kind: string;
+    country: string;
+    bio?: string | null;
+    createdAt: string;
+  };
+  templates: (MarketplaceListingSummary & {
+    versions: { id: string; versionNumber: number }[];
+  })[];
+  reviews: OrganizationReview[];
+  averageRating: number | null;
+  reviewCount: number;
 }
 
 export interface FeeRule {
@@ -243,7 +291,13 @@ export interface OrgMember {
   role: string;
   permissions: string[];
   createdAt: string;
-  user: { id: string; fullName: string; email: string; phone?: string; createdAt: string };
+  user: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    createdAt: string;
+  };
 }
 
 export interface AuditLogEntry {
@@ -331,7 +385,11 @@ export interface Booking {
   vehicle?: Vehicle | null;
   travelers: Traveler[];
   payments: Payment[];
-  termsSnapshot?: { itinerary: BookingItinerary; termsMarkdown?: string | null; frozenAt: string } | null;
+  termsSnapshot?: {
+    itinerary: BookingItinerary;
+    termsMarkdown?: string | null;
+    frozenAt: string;
+  } | null;
   review?: { status: string; rating: number } | null;
   supplierConfirmations: SupplierConfirmation[];
 }
@@ -383,7 +441,11 @@ export interface TradeDeparture {
   tradeVisible: boolean;
   totalSeats: number;
   status: "OPEN" | "CLOSED" | "CANCELLED";
-  tourTemplate: { title: string; durationDays: number; organization: { name: string; country: string } };
+  tourTemplate: {
+    title: string;
+    durationDays: number;
+    organization: { name: string; country: string };
+  };
   seats?: DepartureSeatSummary[];
 }
 

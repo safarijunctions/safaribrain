@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { MarketplaceListingSummary, LiveDeparture } from "../types";
@@ -23,6 +23,7 @@ const BUDGETS = [
 ];
 
 export function MarketplacePage() {
+  const navigate = useNavigate();
   const [country, setCountry] = useState("");
   const { data, isLoading } = useQuery({
     queryKey: ["marketplace", country],
@@ -171,7 +172,19 @@ export function MarketplacePage() {
                       year: "numeric",
                     })}{" "}
                     · {d.tourTemplate.durationDays} days ·{" "}
-                    {d.tourTemplate.organization.name}
+                    <span
+                      className="hover:text-forest-700 hover:underline"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate({
+                          to: "/operators/$id",
+                          params: { id: d.tourTemplate.organization.id },
+                        });
+                      }}
+                    >
+                      {d.tourTemplate.organization.name}
+                    </span>
                   </p>
 
                   <div className="flex items-center justify-between mt-4 pt-4 border-t border-sand-100">
@@ -221,7 +234,20 @@ export function MarketplacePage() {
                 className="block bg-white border border-sand-200 hover:border-forest-300 transition p-5"
               >
                 <p className="text-[11px] tracking-widest2 uppercase text-savannah-600 font-medium">
-                  {listing.organization.name} · {listing.organization.country}
+                  <span
+                    className="hover:text-forest-700 hover:underline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigate({
+                        to: "/operators/$id",
+                        params: { id: listing.organization.id },
+                      });
+                    }}
+                  >
+                    {listing.organization.name}
+                  </span>{" "}
+                  · {listing.organization.country}
                 </p>
                 <h3 className="font-display text-xl text-forest-800 mt-1.5">
                   {listing.title}

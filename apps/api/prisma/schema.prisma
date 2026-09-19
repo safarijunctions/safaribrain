@@ -76,6 +76,7 @@ model Organization {
   country   String // ISO 3166-1 alpha-2, e.g. "TZ" — §1.7 country is config, not a rebuild
   currency  String // ISO 4217, e.g. "TZS"
   verified  Boolean  @default(false) // Trust domain (§6) collapsed onto the org for Phase 0/1
+  bio       String? // Public profile mini-site (§7) — an operator/guide's own words, shown above their listings
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

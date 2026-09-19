@@ -25,7 +25,7 @@ export class MarketplaceService {
         organization: { verified: true, ...(country ? { country } : {}) },
       },
       include: {
-        organization: { select: { name: true, country: true } },
+        organization: { select: { id: true, name: true, country: true } },
         versions: { orderBy: { versionNumber: "desc" }, take: 1 },
       },
       orderBy: { title: "asc" },
@@ -44,10 +44,19 @@ export class MarketplaceService {
       where: {
         status: "OPEN",
         departureDate: { gte: new Date() },
-        tourTemplate: { publiclyListed: true, organization: { verified: true } },
+        tourTemplate: {
+          publiclyListed: true,
+          organization: { verified: true },
+        },
       },
       include: {
-        tourTemplate: { select: { title: true, durationDays: true, organization: { select: { name: true, country: true } } } },
+        tourTemplate: {
+          select: {
+            title: true,
+            durationDays: true,
+            organization: { select: { id: true, name: true, country: true } },
+          },
+        },
         seats: { select: { status: true, heldUntil: true } },
       },
       orderBy: { departureDate: "asc" },
@@ -56,7 +65,11 @@ export class MarketplaceService {
 
     const now = new Date();
     return departures.map((d) => {
-      const booked = d.seats.filter((s) => s.status === "BOOKED" || (s.status === "HELD" && s.heldUntil && s.heldUntil > now)).length;
+      const booked = d.seats.filter(
+        (s) =>
+          s.status === "BOOKED" ||
+          (s.status === "HELD" && s.heldUntil && s.heldUntil > now),
+      ).length;
       const available = d.totalSeats - booked;
       return {
         id: d.id,
@@ -70,15 +83,71 @@ export class MarketplaceService {
     });
   }
 
+  // The operator/guide public profile mini-site (§7) — everything a
+  // traveler needs to trust the org behind a listing before enquiring:
+  // who they are, their own words, and every publicly listed template
+  // plus approved reviews. Same trust-domain scoping as the rest of this
+  // service (verified org only).
+  async getOrganizationProfile(id: string) {
+    const organization = await this.prisma.organization.findFirst({
+      where: { id, verified: true },
+      select: {
+        id: true,
+        name: true,
+        kind: true,
+        country: true,
+        bio: true,
+        createdAt: true,
+      },
+    });
+    if (!organization) throw new NotFoundException("Operator not found");
+
+    const [templates, reviews] = await Promise.all([
+      this.prisma.tourTemplate.findMany({
+        where: { organizationId: id, publiclyListed: true },
+        include: { versions: { orderBy: { versionNumber: "desc" }, take: 1 } },
+        orderBy: { title: "asc" },
+      }),
+      this.prisma.review.findMany({
+        where: { organizationId: id, status: "APPROVED" },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+        select: {
+          id: true,
+          reviewerName: true,
+          rating: true,
+          title: true,
+          body: true,
+          operatorReply: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    const averageRating = reviews.length
+      ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+      : null;
+
+    return {
+      organization,
+      templates,
+      reviews,
+      averageRating,
+      reviewCount: reviews.length,
+    };
+  }
+
   async getTemplate(id: string) {
     const template = await this.prisma.tourTemplate.findFirst({
       where: { id, publiclyListed: true, organization: { verified: true } },
       include: {
-        organization: { select: { name: true, country: true } },
+        organization: { select: { id: true, name: true, country: true } },
         versions: {
           orderBy: { versionNumber: "desc" },
           take: 1,
-          include: { days: { include: { place: true }, orderBy: { dayNumber: "asc" } } },
+          include: {
+            days: { include: { place: true }, orderBy: { dayNumber: "asc" } },
+          },
         },
       },
     });
@@ -87,7 +156,10 @@ export class MarketplaceService {
       ...template,
       versions: template.versions.map((v) => ({
         ...v,
-        days: v.days.map((d) => ({ ...d, mealsIncluded: fromJsonField<string[]>(d.mealsIncluded, []) })),
+        days: v.days.map((d) => ({
+          ...d,
+          mealsIncluded: fromJsonField<string[]>(d.mealsIncluded, []),
+        })),
       })),
     };
   }
@@ -98,7 +170,11 @@ export class MarketplaceService {
   // works from. No actor (anonymous), so ownerId stays unassigned.
   async enquire(templateId: string, dto: MarketplaceEnquiryDto) {
     const template = await this.prisma.tourTemplate.findFirst({
-      where: { id: templateId, publiclyListed: true, organization: { verified: true } },
+      where: {
+        id: templateId,
+        publiclyListed: true,
+        organization: { verified: true },
+      },
     });
     if (!template) throw new NotFoundException("Listing not found");
 

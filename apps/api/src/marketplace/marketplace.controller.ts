@@ -55,7 +55,10 @@ export class MarketplaceController {
   }
 
   @Get("departures/:id/seats")
-  getSeatMap(@Param("id") id: string, @Query("holderToken") holderToken?: string) {
+  getSeatMap(
+    @Param("id") id: string,
+    @Query("holderToken") holderToken?: string,
+  ) {
     return this.departures.getSeatMap(id, holderToken);
   }
 
@@ -72,5 +75,10 @@ export class MarketplaceController {
   @Get("templates/:id/reviews")
   listReviews(@Param("id") id: string) {
     return this.reviews.listPublicForTemplate(id);
+  }
+
+  @Get("organizations/:id")
+  getOrganizationProfile(@Param("id") id: string) {
+    return this.marketplace.getOrganizationProfile(id);
   }
 }

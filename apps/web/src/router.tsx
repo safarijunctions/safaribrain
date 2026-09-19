@@ -1,4 +1,10 @@
-import { createRootRoute, createRoute, createRouter, Outlet, Navigate } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  Navigate,
+} from "@tanstack/react-router";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { TradePage } from "./pages/TradePage";
@@ -11,6 +17,7 @@ import { BookingStatusPage } from "./pages/BookingStatusPage";
 import { MarketplacePage } from "./pages/MarketplacePage";
 import { MarketplaceListingPage } from "./pages/MarketplaceListingPage";
 import { DepartureSeatMapPage } from "./pages/DepartureSeatMapPage";
+import { OperatorProfilePage } from "./pages/OperatorProfilePage";
 import { AdminPage } from "./pages/AdminPage";
 import { isAuthenticated } from "./lib/auth";
 import { AppShell } from "./components/AppShell";
@@ -40,7 +47,8 @@ const registerRoute = createRoute({
 const appLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app-layout",
-  component: () => (isAuthenticated() ? <AppShell /> : <Navigate to="/login" />),
+  component: () =>
+    isAuthenticated() ? <AppShell /> : <Navigate to="/login" />,
 });
 
 const crmInboxRoute = createRoute({
@@ -126,16 +134,33 @@ const departureSeatMapRoute = createRoute({
   component: DepartureSeatMapPage,
 });
 
+// Public — the operator/guide mini-site (design brief). Static
+// "operators" segment, no collision with marketplace's /$id template
+// route since they live under different top-level paths.
+const operatorProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/operators/$id",
+  component: OperatorProfilePage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   registerRoute,
-  appLayoutRoute.addChildren([crmInboxRoute, requestDetailRoute, adminRoute, tradeRoute, vehicleExchangeRoute, messagesRoute]),
+  appLayoutRoute.addChildren([
+    crmInboxRoute,
+    requestDetailRoute,
+    adminRoute,
+    tradeRoute,
+    vehicleExchangeRoute,
+    messagesRoute,
+  ]),
   proposalRoute,
   bookingStatusRoute,
   marketplaceRoute,
   marketplaceListingRoute,
   departureSeatMapRoute,
+  operatorProfileRoute,
 ]);
 
 export const router = createRouter({ routeTree });
