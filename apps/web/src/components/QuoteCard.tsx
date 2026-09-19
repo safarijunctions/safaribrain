@@ -7,8 +7,8 @@ import { Quote } from "../types";
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: "bg-sand-100 text-earth-700",
   PENDING_APPROVAL: "bg-brass-100 text-brass-700",
-  APPROVED: "bg-blue-100 text-blue-800",
-  SENT: "bg-purple-100 text-purple-800",
+  APPROVED: "bg-savannah-100 text-savannah-700",
+  SENT: "bg-status-almost-full/10 text-status-almost-full",
   ACCEPTED: "bg-moss-100 text-moss-800",
   CHANGES_REQUESTED: "bg-orange-100 text-orange-800",
   EXPIRED: "bg-sand-200 text-earth-600",
@@ -212,7 +212,7 @@ export function QuoteCard({
               href={proposalUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-xs text-blue-600 underline break-all"
+              className="text-xs text-forest-700 underline break-all"
             >
               {proposalUrl}
             </a>

@@ -7,7 +7,7 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-sand-100 text-earth-700",
   CONFIRMED: "bg-brass-100 text-brass-700",
   PAID: "bg-moss-100 text-moss-800",
-  ACTIVE: "bg-blue-100 text-blue-800",
+  ACTIVE: "bg-savannah-100 text-savannah-700",
   COMPLETED: "bg-sand-200 text-earth-700",
   CANCELLED: "bg-status-full/10 text-status-full",
 };
@@ -587,7 +587,7 @@ export function BookingPanel({
           href={statusUrl}
           target="_blank"
           rel="noreferrer"
-          className="text-blue-600 underline break-all"
+          className="text-forest-700 underline break-all"
         >
           {statusUrl}
         </a>
