@@ -618,21 +618,63 @@ reassignment dropdown on the request detail page; and the CRM inbox's
 version of this bug. Verified the overpayment case renders correctly in a
 real browser screenshot, not just reasoned about.
 
-## Visual design
+## Visual design: Safari Atlas
 
-The app now has an actual brand identity instead of default Tailwind gray/
-blue: an "African savanna" theme — `clay` (terracotta, primary), `acacia`
-(deep green, secondary/success), `sunset` (amber, accents) — defined in
-`apps/web/tailwind.config.js`, with Fraunces for headings and Inter for
-body text (Google Fonts, loaded in `apps/web/index.html` with a system-font
-fallback stack so nothing breaks if the fonts don't load). Applied
-consistently across every screen, not just the client-facing ones — the
-same tokens drive the internal CRM/admin UI, the public proposal page, and
-the proposal PDF (`ProposalPdfService`'s colors are hand-matched to the
-same hex values), so the whole product reads as one brand rather than an
-internal tool bolted to a polished client page. A small hand-drawn
-`AcaciaSilhouette` component (two SVG shapes, no image asset) is the one
-decorative touch, used sparingly on the login and proposal pages.
+The app's brand identity was fully replaced (superseding the earlier
+`clay`/`acacia`/`sunset` "African savanna" theme this section used to
+describe) after an explicit design brief asking for something purpose-built
+around this platform's own data — live departures, seat maps, guides,
+operators, trade inventory, vehicle rentals — rather than a generic luxury
+template with those forced in. The result, "Safari Atlas":
+
+- **Palette** (`apps/web/tailwind.config.js`): `forest` (deep green,
+  primary), `earth` (near-black, text/dark surfaces), `savannah` (muted
+  brown-gold, secondary), `sand`/`ivory` (warm neutrals, backgrounds),
+  `brass` (accent), plus muted `status-available`/`status-almost-full`/
+  `status-full` tones used everywhere something needs a state color
+  (seat availability, booking/agreement status, destructive actions) —
+  no default Tailwind blue/red/amber/gray left anywhere in the app,
+  confirmed by a full-codebase grep sweep.
+- **Typography**: Cormorant Garamond (display/headings) + Manrope (body),
+  Google Fonts loaded in `apps/web/index.html`.
+- **Signature motif**: `RouteLine.tsx`, a thin dashed SVG path with
+  waypoint dots — a safari itinerary line, used as a decorative accent on
+  dark hero/header sections instead of gradients or glass-card effects.
+- **Bespoke, data-driven surfaces**, not just retokened defaults:
+  - Homepage (`MarketplacePage.tsx`): editorial hero, search card, a live
+    "joining safaris" strip (`GET /marketplace/departures/live`), an
+    interactive **Africa map** (`AfricaMap.tsx` + `data/africaMap.ts` —
+    real country-border geometry for all 54 African countries/
+    territories, adapted from jVectorMap, MIT licensed; only countries
+    with an actual live listing are colored/clickable) alongside a
+    destinations card strip, a "Live Africa" feed of the platform's own
+    most recently approved reviews, and a full footer directory.
+  - Listing page and seat map: editorial single-departure layout and an
+    airline-style dark seat-selection panel (`DepartureSeatMapPage.tsx`).
+  - **Operator/guide public profile mini-sites**
+    (`OperatorProfilePage.tsx`, `/operators/$id`) — an org's own bio
+    (self-editable via `GET`/`PATCH /products/organization/profile`,
+    `MANAGE_CONTENT`-gated), their publicly listed templates, and their
+    approved reviews with an average rating.
+  - **Custom-safari conversational builder**
+    (`CustomSafariPage.tsx`, `/custom-safari`) — a real chat-bubble flow
+    (destination → style → duration → budget → party size → dates →
+    notes → pick an operator → contact info) that ends in a genuine CRM
+    enquiry (`POST /marketplace/organizations/:id/custom-enquiry`), not
+    a mocked AI response. Deliberately doesn't call an LLM: `LlmService`
+    reads each operator's *own* Anthropic key from their Integrations
+    tab, so there's no single platform-wide key a cross-org, no-account
+    conversation could charge a call to before a specific operator is
+    even chosen — the honest design here is a structured, human-readable
+    brief routed to a real inbox, not a faked AI itinerary.
+- Applied consistently everywhere, not just the public-facing pages — the
+  authenticated CRM/admin app (all 10 admin panels, the quote-builder
+  flow, the Trade/Vehicle-Exchange/Messages pages) and the login/register
+  pages all carry the same tokens, verified via a full-codebase color-class
+  grep with zero leftover matches, not just spot checks.
+
+The Fraunces/Inter fonts and the `AcaciaSilhouette` decorative component
+this section previously described no longer exist in the app.
 
 **Mobile layout is a real requirement here, not polish** — §5 states this
 explicitly ("design for weak connections and feature phones from day one").
