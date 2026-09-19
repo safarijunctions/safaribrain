@@ -10,6 +10,7 @@ import {
 import { PublicHeader } from "../components/PublicHeader";
 import { RouteLine } from "../components/RouteLine";
 import { seatAvailability } from "../lib/seatStatus";
+import { countryName } from "../lib/countries";
 
 const SAFARI_TYPES = [
   "Any type",
@@ -44,10 +45,25 @@ export function MarketplacePage() {
     queryKey: ["latest-reviews"],
     queryFn: () => api.get<LatestReview[]>("/marketplace/reviews/latest"),
   });
+  // Unfiltered, independent of the `country` search filter above — the
+  // destinations strip and the search dropdown both need every country
+  // that has listings, not just whichever one is currently selected.
+  const { data: allListings } = useQuery({
+    queryKey: ["marketplace", ""],
+    queryFn: () =>
+      api.get<MarketplaceListingSummary[]>("/marketplace/templates"),
+  });
 
   const countries = Array.from(
-    new Set(data?.map((l) => l.organization.country) ?? []),
+    new Set(allListings?.map((l) => l.organization.country) ?? []),
   ).sort();
+
+  const destinations = countries
+    .map((code) => ({
+      code,
+      count: allListings!.filter((l) => l.organization.country === code).length,
+    }))
+    .sort((a, b) => b.count - a.count);
 
   return (
     <div className="min-h-screen bg-ivory">
@@ -92,7 +108,7 @@ export function MarketplacePage() {
               <option value="">All of Africa</option>
               {countries.map((c) => (
                 <option key={c} value={c}>
-                  {c}
+                  {countryName(c)}
                 </option>
               ))}
             </select>
@@ -218,6 +234,43 @@ export function MarketplacePage() {
           </div>
         </div>
       </section>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Destinations — driven by this platform's actual country coverage, */}
+      {/* not a static list; a country only appears once an operator there */}
+      {/* has a public listing.                                            */}
+      {/* ---------------------------------------------------------------- */}
+      {destinations.length > 0 && (
+        <section className="py-16 sm:py-20 bg-sand-100">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <p className="text-xs tracking-widest2 uppercase text-savannah-600 font-medium mb-2">
+              Where to go
+            </p>
+            <h2 className="font-display text-3xl sm:text-4xl text-forest-800 mb-8">
+              Destinations across Africa
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {destinations.map((d) => (
+                <button
+                  key={d.code}
+                  onClick={() => {
+                    setCountry(d.code);
+                    document
+                      .getElementById("safaris")
+                      ?.scrollIntoView({ behavior: "smooth" });
+                  }}
+                  className="text-left bg-earth-800 hover:bg-earth-900 text-white p-5 transition"
+                >
+                  <p className="font-display text-xl">{countryName(d.code)}</p>
+                  <p className="text-xs text-brass-300 mt-1.5 uppercase tracking-widest2">
+                    {d.count} safari{d.count === 1 ? "" : "s"}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ---------------------------------------------------------------- */}
       {/* Full marketplace grid */}
@@ -358,7 +411,7 @@ export function MarketplacePage() {
                 }}
                 className="block hover:text-white transition mb-1.5"
               >
-                Safaris in {c}
+                Safaris in {countryName(c)}
               </a>
             ))}
           </div>
