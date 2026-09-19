@@ -3,6 +3,7 @@ import { LeadSourceChannel } from "@safaribrain/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { CrmService } from "../crm/crm.service";
 import { MarketplaceEnquiryDto } from "./dto/marketplace-enquiry.dto";
+import { CustomSafariEnquiryDto } from "./dto/custom-safari-enquiry.dto";
 import { fromJsonField } from "../common/json-field";
 
 // Phase 3 (§7) marketplace — public, cross-organization browsing. Every
@@ -211,6 +212,32 @@ export class MarketplaceService {
       preferredStart: dto.preferredStart,
       notes,
       interests: [template.title],
+    });
+  }
+
+  // The custom-safari conversational builder's landing point — no
+  // TourTemplate involved (that's the whole point: the traveler hasn't
+  // picked one), just a verified org the conversation matched by country.
+  // Routes into the exact same CRM pipeline as every other enquiry source.
+  async enquireCustom(organizationId: string, dto: CustomSafariEnquiryDto) {
+    const organization = await this.prisma.organization.findFirst({
+      where: { id: organizationId, verified: true },
+    });
+    if (!organization) throw new NotFoundException("Operator not found");
+
+    const notes = `Custom safari request via the conversational trip builder.${dto.notes ? `\n\n${dto.notes}` : ""}`;
+
+    return this.crm.createRequest(organizationId, undefined, {
+      contactFullName: dto.contactFullName,
+      contactEmail: dto.contactEmail,
+      contactWhatsapp: dto.contactWhatsapp,
+      contactCountry: dto.contactCountry,
+      source: LeadSourceChannel.WEB,
+      partySize: dto.partySize,
+      preferredStart: dto.preferredStart,
+      budgetTier: dto.budgetTier,
+      notes,
+      interests: dto.interests ?? [],
     });
   }
 }

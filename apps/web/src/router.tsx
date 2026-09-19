@@ -18,6 +18,7 @@ import { MarketplacePage } from "./pages/MarketplacePage";
 import { MarketplaceListingPage } from "./pages/MarketplaceListingPage";
 import { DepartureSeatMapPage } from "./pages/DepartureSeatMapPage";
 import { OperatorProfilePage } from "./pages/OperatorProfilePage";
+import { CustomSafariPage } from "./pages/CustomSafariPage";
 import { AdminPage } from "./pages/AdminPage";
 import { isAuthenticated } from "./lib/auth";
 import { AppShell } from "./components/AppShell";
@@ -143,6 +144,13 @@ const operatorProfileRoute = createRoute({
   component: OperatorProfilePage,
 });
 
+// Public — the custom-safari conversational builder (design brief).
+const customSafariRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/custom-safari",
+  component: CustomSafariPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -161,6 +169,7 @@ const routeTree = rootRoute.addChildren([
   marketplaceListingRoute,
   departureSeatMapRoute,
   operatorProfileRoute,
+  customSafariRoute,
 ]);
 
 export const router = createRouter({ routeTree });

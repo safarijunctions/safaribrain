@@ -88,8 +88,14 @@ export function MarketplacePage() {
           </h1>
           <p className="mt-6 text-base sm:text-lg text-white/70 max-w-xl mx-auto">
             Discover the wild differently — browse verified operators, join a
-            live departure, or have Africa's own guides build your trip from
-            scratch.
+            live departure, or{" "}
+            <Link
+              to="/custom-safari"
+              className="text-brass-300 hover:text-brass-200 underline decoration-brass-400/50"
+            >
+              have Africa's own guides build your trip from scratch
+            </Link>
+            .
           </p>
         </div>
       </section>

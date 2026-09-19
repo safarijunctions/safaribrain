@@ -40,6 +40,12 @@ export function PublicHeader({
         >
           Joining Safaris
         </a>
+        <Link
+          to="/custom-safari"
+          className="hidden sm:inline text-sm text-white/75 hover:text-white transition"
+        >
+          Build a Custom Safari
+        </Link>
       </div>
       <div className="flex items-center gap-3 sm:gap-5 text-sm shrink-0">
         <Link

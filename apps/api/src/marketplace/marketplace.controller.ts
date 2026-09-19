@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { MarketplaceService } from "./marketplace.service";
 import { MarketplaceEnquiryDto } from "./dto/marketplace-enquiry.dto";
+import { CustomSafariEnquiryDto } from "./dto/custom-safari-enquiry.dto";
 import { DeparturesService } from "../departures/departures.service";
 import { HoldSeatsDto } from "../departures/dto/hold-seats.dto";
 import { ConfirmSeatBookingDto } from "../departures/dto/confirm-booking.dto";
@@ -87,5 +88,10 @@ export class MarketplaceController {
     return this.marketplace.listLatestReviews(
       limit ? Number(limit) : undefined,
     );
+  }
+
+  @Post("organizations/:id/custom-enquiry")
+  enquireCustom(@Param("id") id: string, @Body() dto: CustomSafariEnquiryDto) {
+    return this.marketplace.enquireCustom(id, dto);
   }
 }
