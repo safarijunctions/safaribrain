@@ -11,6 +11,7 @@ import { PublicHeader } from "../components/PublicHeader";
 import { RouteLine } from "../components/RouteLine";
 import { seatAvailability } from "../lib/seatStatus";
 import { countryName } from "../lib/countries";
+import { AfricaMap } from "../components/AfricaMap";
 
 const SAFARI_TYPES = [
   "Any type",
@@ -249,24 +250,39 @@ export function MarketplacePage() {
             <h2 className="font-display text-3xl sm:text-4xl text-forest-800 mb-8">
               Destinations across Africa
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {destinations.map((d) => (
-                <button
-                  key={d.code}
-                  onClick={() => {
-                    setCountry(d.code);
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+              <div className="lg:col-span-3">
+                <AfricaMap
+                  destinations={destinations}
+                  onSelect={(code) => {
+                    setCountry(code);
                     document
                       .getElementById("safaris")
                       ?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="text-left bg-earth-800 hover:bg-earth-900 text-white p-5 transition"
-                >
-                  <p className="font-display text-xl">{countryName(d.code)}</p>
-                  <p className="text-xs text-brass-300 mt-1.5 uppercase tracking-widest2">
-                    {d.count} safari{d.count === 1 ? "" : "s"}
-                  </p>
-                </button>
-              ))}
+                />
+              </div>
+              <div className="lg:col-span-2 grid grid-cols-2 gap-3">
+                {destinations.map((d) => (
+                  <button
+                    key={d.code}
+                    onClick={() => {
+                      setCountry(d.code);
+                      document
+                        .getElementById("safaris")
+                        ?.scrollIntoView({ behavior: "smooth" });
+                    }}
+                    className="text-left bg-earth-800 hover:bg-earth-900 text-white p-5 transition"
+                  >
+                    <p className="font-display text-xl">
+                      {countryName(d.code)}
+                    </p>
+                    <p className="text-xs text-brass-300 mt-1.5 uppercase tracking-widest2">
+                      {d.count} safari{d.count === 1 ? "" : "s"}
+                    </p>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </section>
