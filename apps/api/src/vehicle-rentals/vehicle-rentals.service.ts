@@ -108,7 +108,7 @@ export class VehicleRentalsService {
   // in, not just at request time, since two renters can request
   // overlapping dates and the owner can only actually accept one.
   async respond(ownerOrganizationId: string, agreementId: string, decision: "ACCEPTED" | "DECLINED") {
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       const agreement = await tx.vehicleRentalAgreement.findUnique({ where: { id: agreementId } });
       if (!agreement) throw new NotFoundException("Rental agreement not found");
       if (agreement.ownerOrganizationId !== ownerOrganizationId) throw new ForbiddenException("Not your listing");
@@ -128,13 +128,17 @@ export class VehicleRentalsService {
         }
       }
 
-      const updated = await tx.vehicleRentalAgreement.update({
+      return tx.vehicleRentalAgreement.update({
         where: { id: agreementId },
         data: { status: decision, respondedAt: new Date() },
       });
-      await this.audit.record({ organizationId: ownerOrganizationId, action: `vehicle_rental.agreement.${decision.toLowerCase()}`, entityType: "VehicleRentalAgreement", entityId: agreementId });
-      return updated;
     });
+    // Outside the transaction — see DeparturesService.confirmBooking's
+    // comment on why calling AuditService.record() (the outer, non-tx
+    // PrismaService connection) from inside an open $transaction
+    // self-deadlocks on SQLite's single connection.
+    await this.audit.record({ organizationId: ownerOrganizationId, action: `vehicle_rental.agreement.${decision.toLowerCase()}`, entityType: "VehicleRentalAgreement", entityId: agreementId });
+    return updated;
   }
 
   listMyAgreements(organizationId: string) {

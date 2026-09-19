@@ -1,11 +1,11 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
 import { RequestStage } from "@safaribrain/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { CreateDepartureDto } from "./dto/create-departure.dto";
 import { HoldSeatsDto } from "./dto/hold-seats.dto";
 import { ConfirmSeatBookingDto } from "./dto/confirm-booking.dto";
+import { toJsonField, fromJsonField } from "../common/json-field";
 
 const HOLD_MINUTES = 5;
 
@@ -106,48 +106,42 @@ export class DeparturesService {
 
   // The one piece of this feature that must be genuinely concurrency-safe:
   // two travelers can click the same seat within milliseconds of each
-  // other and only one may win. SERIALIZABLE isolation makes Postgres abort
-  // one of two conflicting concurrent transactions with a serialization
-  // failure (Prisma surfaces this as error code P2034) rather than letting
-  // both believe they hold the seat — a DB-level guarantee, not an
-  // application-level race that happens to usually work.
+  // other and only one may win. On Postgres this used an explicit
+  // SERIALIZABLE transaction with a retry-on-conflict loop; SQLite doesn't
+  // support configurable isolation levels at all (Prisma rejects the
+  // option outright for this connector), and doesn't need one — a SQLite
+  // database only ever has one write transaction in flight at a time
+  // (the engine's own file-level write lock), and Prisma talks to it over
+  // a single connection, so a second concurrent holdSeats() call simply
+  // runs after the first one commits, never interleaved with it. The
+  // check-then-act below is therefore already atomic: whichever caller's
+  // transaction runs second will see the seat already HELD/BOOKED and hit
+  // the ordinary ConflictException below — no serialization-failure retry
+  // needed. Verified empirically (see ARCHITECTURE.md) with a real
+  // concurrent-hold test, the same way the Postgres version was verified.
   async holdSeats(departureId: string, dto: HoldSeatsDto) {
     await this.assertBookable(departureId);
-    const MAX_ATTEMPTS = 3;
-    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-      try {
-        return await this.prisma.$transaction(
-          async (tx) => {
-            const now = new Date();
-            const seats = await tx.seat.findMany({ where: { id: { in: dto.seatIds }, departureId } });
-            if (seats.length !== dto.seatIds.length) throw new NotFoundException("One or more seats were not found on this departure");
+    return this.prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const seats = await tx.seat.findMany({ where: { id: { in: dto.seatIds }, departureId } });
+      if (seats.length !== dto.seatIds.length) throw new NotFoundException("One or more seats were not found on this departure");
 
-            const unavailable = seats.filter((s) => {
-              const status = effectiveStatus(s, now);
-              return status === "BOOKED" || (status === "HELD" && s.holderToken !== dto.holderToken);
-            });
-            if (unavailable.length > 0) {
-              throw new ConflictException(`Already taken: ${unavailable.map((s) => s.label).join(", ")} — pick a different seat.`);
-            }
-
-            const heldUntil = new Date(now.getTime() + HOLD_MINUTES * 60_000);
-            await tx.seat.updateMany({
-              where: { id: { in: dto.seatIds } },
-              data: { status: "HELD", heldUntil, holderToken: dto.holderToken },
-            });
-            const updated = await tx.seat.findMany({ where: { id: { in: dto.seatIds } }, orderBy: { label: "asc" } });
-            return { heldUntil, seats: updated.map((s) => ({ id: s.id, label: s.label, type: s.type })) };
-          },
-          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-        );
-      } catch (err: any) {
-        const isSerializationConflict = err?.code === "P2034";
-        if (isSerializationConflict && attempt < MAX_ATTEMPTS) continue;
-        if (isSerializationConflict) throw new ConflictException("That seat was just taken by someone else — please try again.");
-        throw err;
+      const unavailable = seats.filter((s) => {
+        const status = effectiveStatus(s, now);
+        return status === "BOOKED" || (status === "HELD" && s.holderToken !== dto.holderToken);
+      });
+      if (unavailable.length > 0) {
+        throw new ConflictException(`Already taken: ${unavailable.map((s) => s.label).join(", ")} — pick a different seat.`);
       }
-    }
-    throw new ConflictException("That seat was just taken by someone else — please try again.");
+
+      const heldUntil = new Date(now.getTime() + HOLD_MINUTES * 60_000);
+      await tx.seat.updateMany({
+        where: { id: { in: dto.seatIds } },
+        data: { status: "HELD", heldUntil, holderToken: dto.holderToken },
+      });
+      const updated = await tx.seat.findMany({ where: { id: { in: dto.seatIds } }, orderBy: { label: "asc" } });
+      return { heldUntil, seats: updated.map((s) => ({ id: s.id, label: s.label, type: s.type })) };
+    });
   }
 
   // Staff-side: an operator/guide opts an already-created departure into
@@ -200,13 +194,15 @@ export class DeparturesService {
     dto: ConfirmSeatBookingDto,
     trade?: { agentOrganizationId: string; unitNetPrice: number },
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    let seatCount = 0;
+    const booking = await this.prisma.$transaction(async (tx) => {
       const now = new Date();
       const heldSeats = await tx.seat.findMany({ where: { departureId, holderToken: dto.holderToken, status: "HELD" } });
       const valid = heldSeats.filter((s) => s.heldUntil && s.heldUntil > now);
       if (valid.length === 0) {
         throw new BadRequestException("Your seat hold has expired — please select seats again.");
       }
+      seatCount = valid.length;
 
       const departure = await tx.departure.findFirstOrThrow({
         where: { id: departureId },
@@ -252,7 +248,7 @@ export class DeparturesService {
           notes: trade
             ? `Trade booking via partner "${tradePartnerName ?? trade.agentOrganizationId}": ${departure.tourTemplate.title}, departing ${departure.departureDate.toDateString()}.`
             : `Instant seat booking: ${departure.tourTemplate.title}, departing ${departure.departureDate.toDateString()}.`,
-          interests: [departure.tourTemplate.title],
+          interests: toJsonField([departure.tourTemplate.title]),
           consentGiven: true,
           pipelineLog: {
             create: [{ stage: RequestStage.BOOKED, note: trade ? `Trade seat-map booking via ${tradePartnerName ?? "a trade partner"}` : "Instant seat-map booking" }],
@@ -274,17 +270,17 @@ export class DeparturesService {
           retailTotalPrice: trade ? retailTotalPrice : null,
           termsSnapshot: {
             create: {
-              itinerary: {
+              itinerary: toJsonField({
                 title: departure.tourTemplate.title,
                 durationDays: departure.tourTemplate.durationDays,
                 days: templateVersion?.days.map((d) => ({
                   dayNumber: d.dayNumber,
                   title: d.title,
                   description: d.description,
-                  mealsIncluded: d.mealsIncluded,
+                  mealsIncluded: fromJsonField<string[]>(d.mealsIncluded, []),
                   place: d.place ? { name: d.place.name } : null,
                 })) ?? [],
-              } as any,
+              }),
               termsMarkdown: templateVersion?.termsMarkdown ?? null,
             },
           },
@@ -297,16 +293,26 @@ export class DeparturesService {
         data: { status: "BOOKED", bookingId: booking.id, holderToken: null, heldUntil: null },
       });
 
-      await this.audit.record({
-        organizationId: departure.organizationId,
-        action: trade ? "departure.trade_book" : "departure.instant_book",
-        entityType: "Booking",
-        entityId: booking.id,
-        metadata: { departureId: departure.id, seatCount: valid.length, agentOrganizationId: trade?.agentOrganizationId },
-      });
-
       return booking;
     });
+    // Deliberately outside the transaction: AuditService.record() runs
+    // against the outer (non-tx) PrismaService connection. On SQLite,
+    // where this app runs over a single connection (see schema.prisma's
+    // datasource comment), calling it *inside* an open interactive
+    // transaction self-deadlocks — the transaction holds the only
+    // connection and audit.record() blocks forever waiting for a free
+    // one, until Prisma's own interactive-transaction timeout aborts it.
+    // The audit entry is therefore best-effort-after-commit rather than
+    // part of the same atomic unit as the booking — acceptable for a
+    // record-keeping trail (§9), unlike the booking data itself.
+    await this.audit.record({
+      organizationId: booking.organizationId,
+      action: trade ? "departure.trade_book" : "departure.instant_book",
+      entityType: "Booking",
+      entityId: booking.id,
+      metadata: { departureId, seatCount, agentOrganizationId: trade?.agentOrganizationId },
+    });
+    return booking;
   }
 }
 

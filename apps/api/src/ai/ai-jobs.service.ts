@@ -7,8 +7,13 @@ import { DraftItineraryDto } from "./dto/draft-itinerary.dto";
 import { ApproveItineraryDto } from "./dto/approve-itinerary.dto";
 import { DraftReplyDto } from "./dto/draft-reply.dto";
 import { ApproveReplyDto } from "./dto/approve-reply.dto";
+import { toJsonField, fromJsonField } from "../common/json-field";
 
 const MEAL_VALUES = new Set(["BREAKFAST", "LUNCH", "DINNER"]);
+
+function withParsedOutput<T extends { output: string }>(job: T) {
+  return { ...job, output: fromJsonField<unknown>(job.output, null) };
+}
 
 // §1.3 / §9's non-negotiable: an AI draft can never become a real
 // TourTemplate on its own. draftItinerary only ever writes an AiJob row
@@ -24,12 +29,13 @@ export class AiJobsService {
     private readonly llm: LlmService,
   ) {}
 
-  list(organizationId: string, kind: AiJobKind) {
-    return this.prisma.aiJob.findMany({
+  async list(organizationId: string, kind: AiJobKind) {
+    const rows = await this.prisma.aiJob.findMany({
       where: { organizationId, kind },
       orderBy: { createdAt: "desc" },
       include: { requestedBy: { select: { id: true, fullName: true } } },
     });
+    return rows.map(withParsedOutput);
   }
 
   async draftItinerary(organizationId: string, actorId: string | undefined, dto: DraftItineraryDto) {
@@ -44,13 +50,13 @@ export class AiJobsService {
         status: AiJobApprovalStatus.DRAFTED,
         prompt: dto.prompt,
         model: completion.model,
-        output: parsed as any,
+        output: toJsonField(parsed),
         requestedById: actorId,
       },
     });
 
     await this.audit.record({ organizationId, actorId, action: "ai.itinerary_draft.create", entityType: "AiJob", entityId: job.id, metadata: { model: completion.model } });
-    return job;
+    return withParsedOutput(job);
   }
 
   async approveItinerary(organizationId: string, actorId: string | undefined, jobId: string, dto: ApproveItineraryDto) {
@@ -74,7 +80,7 @@ export class AiJobsService {
                   dayNumber: d.dayNumber,
                   title: d.title,
                   description: d.description,
-                  mealsIncluded: d.mealsIncluded.filter((m) => MEAL_VALUES.has(m)),
+                  mealsIncluded: toJsonField(d.mealsIncluded.filter((m) => MEAL_VALUES.has(m))),
                 })),
               },
             },
@@ -89,7 +95,7 @@ export class AiJobsService {
     });
 
     await this.audit.record({ organizationId, actorId, action: "ai.itinerary_draft.approve", entityType: "AiJob", entityId: job.id, metadata: { templateId: template.id } });
-    return { job: updated, template };
+    return { job: withParsedOutput(updated), template };
   }
 
   async reject(organizationId: string, actorId: string | undefined, jobId: string, kind: AiJobKind) {
@@ -100,7 +106,7 @@ export class AiJobsService {
       data: { status: AiJobApprovalStatus.REJECTED, decidedById: actorId, decidedAt: new Date() },
     });
     await this.audit.record({ organizationId, actorId, action: `ai.${kind.toLowerCase()}.reject`, entityType: "AiJob", entityId: job.id });
-    return updated;
+    return withParsedOutput(updated);
   }
 
   // A reply draft is a CRM/sales tool, not content-governance the way an
@@ -116,7 +122,7 @@ export class AiJobsService {
     });
     if (!request) throw new NotFoundException("Request not found");
 
-    const prompt = buildReplyPrompt(request);
+    const prompt = buildReplyPrompt({ ...request, interests: fromJsonField<string[]>(request.interests, []) });
     const completion = await this.llm.complete(organizationId, prompt);
 
     const job = await this.prisma.aiJob.create({
@@ -127,21 +133,22 @@ export class AiJobsService {
         status: AiJobApprovalStatus.DRAFTED,
         prompt,
         model: completion.model,
-        output: { replyText: completion.text.trim() },
+        output: toJsonField({ replyText: completion.text.trim() }),
         requestedById: actorId,
       },
     });
 
     await this.audit.record({ organizationId, actorId, action: "ai.reply_draft.create", entityType: "AiJob", entityId: job.id, metadata: { requestId: request.id, model: completion.model } });
-    return job;
+    return withParsedOutput(job);
   }
 
-  listReplyDrafts(organizationId: string, requestId: string) {
-    return this.prisma.aiJob.findMany({
+  async listReplyDrafts(organizationId: string, requestId: string) {
+    const rows = await this.prisma.aiJob.findMany({
       where: { organizationId, requestId, kind: AiJobKind.REPLY_DRAFT },
       orderBy: { createdAt: "desc" },
       include: { requestedBy: { select: { id: true, fullName: true } } },
     });
+    return rows.map(withParsedOutput);
   }
 
   async approveReply(organizationId: string, actorId: string | undefined, jobId: string, dto: ApproveReplyDto) {
@@ -164,7 +171,7 @@ export class AiJobsService {
     });
 
     await this.audit.record({ organizationId, actorId, action: "ai.reply_draft.approve", entityType: "AiJob", entityId: job.id, metadata: { requestId: request.id, pipelineEventId: event.id } });
-    return { job: updated, pipelineEvent: event };
+    return { job: withParsedOutput(updated), pipelineEvent: event };
   }
 
   private async getOwned(organizationId: string, id: string, kind: AiJobKind) {

@@ -25,7 +25,7 @@ async function main() {
         create: {
           organizationId: org.id,
           role: UserRole.ADMIN,
-          permissions: Object.values(Permission),
+          permissions: JSON.stringify(Object.values(Permission)),
         },
       },
     },
@@ -37,7 +37,7 @@ async function main() {
       passwordHash,
       fullName: "Juma Kimaro (Operator)",
       memberships: {
-        create: { organizationId: org.id, role: UserRole.OPERATOR, permissions: [] },
+        create: { organizationId: org.id, role: UserRole.OPERATOR, permissions: "[]" },
       },
     },
   });
@@ -50,7 +50,7 @@ async function main() {
       passwordHash,
       fullName: "Grace Mushi (Sales Manager)",
       memberships: {
-        create: { organizationId: org.id, role: UserRole.OPERATOR, permissions: [Permission.APPROVE_QUOTE] },
+        create: { organizationId: org.id, role: UserRole.OPERATOR, permissions: JSON.stringify([Permission.APPROVE_QUOTE]) },
       },
     },
   });
@@ -148,10 +148,10 @@ async function main() {
               "Full refund up to 60 days before departure; 50% refund 30-59 days before; no refund inside 30 days. Prices exclude international flights and visas.",
             days: {
               create: [
-                { dayNumber: 1, placeId: tarangire.id, title: "Arrive & Tarangire game drive", mealsIncluded: ["LUNCH", "DINNER"] },
-                { dayNumber: 2, placeId: ngorongoro.id, title: "Ngorongoro Crater floor safari", mealsIncluded: ["BREAKFAST", "LUNCH", "DINNER"] },
-                { dayNumber: 3, placeId: serengeti.id, title: "Serengeti — Great Migration search", mealsIncluded: ["BREAKFAST", "LUNCH", "DINNER"] },
-                { dayNumber: 4, placeId: serengeti.id, title: "Morning game drive & departure", mealsIncluded: ["BREAKFAST"] },
+                { dayNumber: 1, placeId: tarangire.id, title: "Arrive & Tarangire game drive", mealsIncluded: JSON.stringify(["LUNCH", "DINNER"]) },
+                { dayNumber: 2, placeId: ngorongoro.id, title: "Ngorongoro Crater floor safari", mealsIncluded: JSON.stringify(["BREAKFAST", "LUNCH", "DINNER"]) },
+                { dayNumber: 3, placeId: serengeti.id, title: "Serengeti — Great Migration search", mealsIncluded: JSON.stringify(["BREAKFAST", "LUNCH", "DINNER"]) },
+                { dayNumber: 4, placeId: serengeti.id, title: "Morning game drive & departure", mealsIncluded: JSON.stringify(["BREAKFAST"]) },
               ],
             },
           },
@@ -180,7 +180,7 @@ async function main() {
       budgetTier: "MID",
       preferredStart: new Date("2026-10-10"),
       preferredEnd: new Date("2026-10-14"),
-      interests: ["wildlife", "photography"],
+      interests: JSON.stringify(["wildlife", "photography"]),
       notes: "Honeymoon trip, would love a sundowner at the crater rim.",
       consentGiven: true,
       pipelineLog: { create: [{ stage: "NEW", note: "Enquiry received via WhatsApp" }] },

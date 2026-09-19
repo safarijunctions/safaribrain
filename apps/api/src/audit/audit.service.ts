@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { toJsonField, fromJsonField } from "../common/json-field";
 
 // Every consequential action (quote approval, acceptance, fee publish, refund,
 // payout) must leave an immutable trail — §6 Platform.audit_log, §9 "No AI
@@ -28,7 +29,7 @@ export class AuditService {
         action: params.action,
         entityType: params.entityType,
         entityId: params.entityId,
-        metadata: (params.metadata ?? undefined) as any,
+        metadata: params.metadata !== undefined ? toJsonField(params.metadata) : undefined,
       },
     });
   }
@@ -49,6 +50,11 @@ export class AuditService {
       }),
       this.prisma.auditLog.count({ where }),
     ]);
-    return { rows, total, page: opts.page, pageSize: opts.pageSize };
+    return {
+      rows: rows.map((r) => ({ ...r, metadata: r.metadata !== null ? fromJsonField<unknown>(r.metadata, null) : null })),
+      total,
+      page: opts.page,
+      pageSize: opts.pageSize,
+    };
   }
 }

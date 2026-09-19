@@ -782,6 +782,94 @@ solo guide has no separate "admin" persona to switch into. The existing
 Admin → Marketplace tab gained an inline "opt into trade" control per
 departure.
 
+## What's built: SQLite instead of a hosted database
+
+Explicit ask: no hosted/external database service — not Postgres, not
+Supabase, nothing to run separately or sign up for. `apps/api/prisma/
+schema.prisma`'s datasource is now `sqlite`, backed by a single file
+(`apps/api/prisma/dev.db`, git-ignored, created by `prisma migrate`) —
+`git clone && pnpm install && migrate && seed` and the app runs, no
+docker-compose, no separate database process. `docker-compose.yml` (which
+only ever ran Postgres + an unused Redis container) is deleted.
+
+**What actually changed, and why each piece was necessary — not a drop-in
+provider swap:**
+
+- **No native array columns.** Every `String[]` field (`Membership
+  .permissions`, `EnquiryRequest.interests`, `ItineraryDay.mealsIncluded`)
+  is now `String`, storing JSON text, via two helpers
+  (`apps/api/src/common/json-field.ts`: `toJsonField`/`fromJsonField`) used
+  at every write/read site rather than a blind data-layer shim — SQLite
+  has no `Json` scalar type either (not just no native arrays), so this
+  same treatment extends to every field that held structured data: quote/
+  price-snapshot `breakdown`, `AiJob.output`, `Integration.config`/
+  `secrets`, `AuditLog.metadata`, and the frozen `BookingTermsSnapshot
+  .itinerary`/day `mealsIncluded`. A second helper module
+  (`apps/api/src/common/quote-json.ts`) centralizes the quote/version/
+  price-snapshot parsing specifically, since both `QuotesService` and
+  `CrmService.getRequest` read quotes.
+- **No native enums.** Every enum-typed column (`role`, every `status`,
+  `channel`, `kind`, `source`, `stage`, `type`, `method`, `visibility`) is
+  now `String` with a schema comment listing its valid values — the
+  `@safaribrain/shared` TS enum was always the actual source of truth for
+  validation (nothing in this app imports a Prisma-generated enum type),
+  so this needed zero application-code changes: a TS string enum member is
+  already assignable to a `string`-typed Prisma field.
+- **No `@db.Decimal(...)` native-type attribute** (Postgres-specific) —
+  removed; the `Decimal` scalar type itself is unchanged, still backed by
+  `decimal.js`, so every `Number(booking.totalPrice)`-style call in the
+  app was untouched.
+- **No configurable transaction isolation level.** `DeparturesService
+  .holdSeats` used an explicit Postgres `SERIALIZABLE` transaction with a
+  retry-on-`P2034` loop (§10.7's "prevents two users from buying the same
+  seat"); SQLite rejects the `isolationLevel` option outright. Replaced
+  with a plain `$transaction` and an explanatory comment: SQLite only ever
+  has one write transaction in flight at a time (the engine's own
+  file-level lock) and this app talks to it over a single connection
+  (`DATABASE_URL=...?connection_limit=1` — see below), so the existing
+  check-then-act logic is already atomic without needing an isolation
+  level or a retry loop. **Verified, not assumed**: fired 10 genuinely
+  simultaneous hold requests at the same seat — exactly 1 succeeded, the
+  other 9 got a clean 409, same as the Postgres-era test.
+- **`connection_limit=1` on `DATABASE_URL`.** SQLite's default multi-
+  connection pool behavior caused real, repeatable 5-second hangs
+  (Prisma's interactive-transaction timeout) under load in this pass —
+  forcing a single connection is the standard fix and matches the "one
+  write transaction at a time" reasoning above.
+- **A real, pre-existing correctness bug this migration surfaced and
+  fixed**: `DeparturesService.confirmBooking` and
+  `VehicleRentalsService.respond` both called `AuditService.record()` —
+  which runs against the *outer*, non-transactional `PrismaService`
+  connection — from *inside* an open `$transaction` callback. Under
+  Postgres (default pool size > 1) a second connection was always free,
+  so this silently worked. Under SQLite's single connection, it
+  self-deadlocks: the open transaction holds the only connection, and
+  `audit.record()` blocks forever waiting for one, until Prisma's client-
+  side interactive-transaction timeout aborts it 5 seconds later —
+  reproduced live (a trade booking and a vehicle-rental acceptance both
+  hung for exactly ~5s and 500'd), root-caused by instrumenting the
+  transaction with timers, and fixed by moving both `audit.record()` calls
+  to *after* the transaction resolves (same pattern `QuotesService.accept`
+  already used correctly). The audit entry is therefore best-effort-after-
+  commit rather than part of the same atomic unit as the write itself —
+  an acceptable tradeoff for a record-keeping trail (§9), unlike the
+  booking/agreement data.
+
+**Verified end-to-end on the real SQLite file**, not just built: reran
+every check from the Trade-network pass above (trade booking with correct
+net-vs-retail pricing and margin, vehicle rental request/accept with the
+overlap-conflict guard, org-to-org messaging) against a fresh
+`migrate`+`seed`; reran the 10-concurrent-seat-hold test (1 succeeds, 9
+get 409); reran the full original golden path end-to-end over the raw
+API — enquiry → quote → submit → approve → send → public proposal view
+(confirming `breakdown`/`itinerary`/`mealsIncluded` all come back as real
+objects/arrays, not JSON strings) → client accept (write-once
+`PriceSnapshot`/`BookingTermsSnapshot`) → booking → add traveler → record
+payment → both PDFs → guide/vehicle logistics → manifest PDF; and re-ran
+the Trade-network Playwright browser pass. `pnpm build` (shared package,
+API, web) is clean. Fixed the negative-path 500s (the audit-deadlock bug
+above) rather than papering over them with a longer timeout.
+
 ## Deliberately not built yet (with why)
 
 - **WhatsApp Business API channel** (§4.1/§5/Phase 1 scope item) — needs a

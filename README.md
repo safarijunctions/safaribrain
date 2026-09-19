@@ -10,16 +10,22 @@ not built yet, and open decisions that need a human call before the next phase.
 
 ```
 apps/
-  api/      NestJS + Prisma + PostgreSQL — the sales operating system backend
+  api/      NestJS + Prisma + SQLite — the sales operating system backend
   web/      React + Vite + TypeScript + Tailwind + TanStack Router/Query
 packages/
   shared/   Enums and DTO shapes shared between api and web
 ```
 
+The database is SQLite — a single file (`apps/api/prisma/dev.db`), created
+automatically the first time you migrate. There is no external database
+service to install, run, or sign up for (no Postgres, no Supabase, nothing
+hosted) — `git clone`, `pnpm install`, migrate, and it runs.
+
 ## Prerequisites
 
 - Node.js 20+, pnpm (`corepack enable` or `npm i -g pnpm`)
-- PostgreSQL 16 (via `docker compose up -d postgres redis`, or a local install)
+
+That's it — nothing else needs to be running.
 
 ## Getting started
 
@@ -27,7 +33,7 @@ packages/
 pnpm install
 
 # apps/api
-cp apps/api/.env.example apps/api/.env   # edit DATABASE_URL if not using docker-compose defaults
+cp apps/api/.env.example apps/api/.env   # DATABASE_URL="file:./dev.db" by default
 pnpm --filter @safaribrain/api prisma:migrate
 pnpm --filter @safaribrain/api prisma:seed
 pnpm dev:api    # http://localhost:3001/api

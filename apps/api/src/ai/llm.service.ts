@@ -24,8 +24,8 @@ export class LlmService {
     if (!row) {
       throw new BadRequestException("No AI provider is configured — add one under Admin > Integrations first.");
     }
-    const config = row.config as Record<string, unknown>;
-    const secrets = row.secrets as Record<string, unknown>;
+    const config = row.config;
+    const secrets = row.secrets;
     const apiKey = secrets.apiKey as string | undefined;
     const model = (config.model as string | undefined) || "claude-haiku-4-5-20251001";
     if (!apiKey) {

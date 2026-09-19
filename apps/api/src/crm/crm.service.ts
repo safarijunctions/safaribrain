@@ -3,6 +3,16 @@ import { RequestStage } from "@safaribrain/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { CreateRequestDto } from "./dto/create-request.dto";
+import { toJsonField, fromJsonField } from "../common/json-field";
+import { parseQuote } from "../common/quote-json";
+
+function withParsedInterests<T extends { interests: string; quotes?: any[] }>(request: T) {
+  return {
+    ...request,
+    interests: fromJsonField<string[]>(request.interests, []),
+    quotes: request.quotes?.map(parseQuote),
+  };
+}
 
 @Injectable()
 export class CrmService {
@@ -43,7 +53,7 @@ export class CrmService {
         budgetTier: dto.budgetTier,
         preferredStart: dto.preferredStart ? new Date(dto.preferredStart) : undefined,
         preferredEnd: dto.preferredEnd ? new Date(dto.preferredEnd) : undefined,
-        interests: dto.interests ?? [],
+        interests: toJsonField(dto.interests ?? []),
         notes: dto.notes,
         consentGiven: true,
         tasks: {
@@ -69,15 +79,16 @@ export class CrmService {
       metadata: { source: dto.source, contactId: contact.id },
     });
 
-    return request;
+    return withParsedInterests(request);
   }
 
-  listRequests(organizationId: string) {
-    return this.prisma.enquiryRequest.findMany({
+  async listRequests(organizationId: string) {
+    const rows = await this.prisma.enquiryRequest.findMany({
       where: { organizationId },
       include: { contact: true, owner: true, quotes: true },
       orderBy: { createdAt: "desc" },
     });
+    return rows.map(withParsedInterests);
   }
 
   async getRequest(organizationId: string, id: string) {
@@ -92,7 +103,7 @@ export class CrmService {
       },
     });
     if (!request) throw new NotFoundException("Request not found");
-    return request;
+    return withParsedInterests(request);
   }
 
   async setStage(organizationId: string, id: string, actorId: string | undefined, stage: RequestStage, note?: string) {
@@ -102,7 +113,7 @@ export class CrmService {
       data: { stage, pipelineLog: { create: [{ stage, note }] } },
     });
     await this.audit.record({ organizationId, actorId, action: "request.stage_change", entityType: "EnquiryRequest", entityId: id, metadata: { stage } });
-    return updated;
+    return withParsedInterests(updated);
   }
 
   // Support tool: reassign a stuck or orphaned enquiry to a different team
@@ -118,6 +129,6 @@ export class CrmService {
 
     const updated = await this.prisma.enquiryRequest.update({ where: { id }, data: { ownerId }, include: { owner: true } });
     await this.audit.record({ organizationId, actorId, action: "request.reassign_owner", entityType: "EnquiryRequest", entityId: id, metadata: { ownerId } });
-    return updated;
+    return withParsedInterests(updated);
   }
 }

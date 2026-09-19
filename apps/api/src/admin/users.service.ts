@@ -5,6 +5,11 @@ import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { InviteUserDto } from "./dto/invite-user.dto";
 import { UpdateMembershipDto } from "./dto/update-membership.dto";
+import { toJsonField, fromJsonField } from "../common/json-field";
+
+function withParsedPermissions<T extends { permissions: string }>(membership: T) {
+  return { ...membership, permissions: fromJsonField<string[]>(membership.permissions, []) };
+}
 
 // Admin Portal user management (§4.9). Real invite email delivery needs a
 // messaging integration (see IntegrationsService) — until an admin sets one
@@ -17,12 +22,13 @@ export class UsersService {
     private readonly audit: AuditService,
   ) {}
 
-  list(organizationId: string) {
-    return this.prisma.membership.findMany({
+  async list(organizationId: string) {
+    const rows = await this.prisma.membership.findMany({
       where: { organizationId },
       include: { user: { select: { id: true, fullName: true, email: true, phone: true, createdAt: true } } },
       orderBy: { createdAt: "asc" },
     });
+    return rows.map(withParsedPermissions);
   }
 
   async invite(organizationId: string, actorId: string | undefined, dto: InviteUserDto) {
@@ -35,11 +41,11 @@ export class UsersService {
       if (existingMembership) throw new BadRequestException("This person already has access to your organization");
 
       const membership = await this.prisma.membership.create({
-        data: { userId: existingUser.id, organizationId, role: dto.role, permissions: dto.permissions ?? [] },
+        data: { userId: existingUser.id, organizationId, role: dto.role, permissions: toJsonField(dto.permissions ?? []) },
       });
       await this.audit.record({ organizationId, actorId, action: "user.add_to_org", entityType: "Membership", entityId: membership.id, metadata: { role: dto.role } });
       const { passwordHash: _existingHash, ...safeExistingUser } = existingUser;
-      return { user: safeExistingUser, membership, tempPassword: null };
+      return { user: safeExistingUser, membership: withParsedPermissions(membership), tempPassword: null };
     }
 
     const tempPassword = crypto.randomBytes(9).toString("base64url");
@@ -50,7 +56,7 @@ export class UsersService {
         email: dto.email,
         fullName: dto.fullName,
         passwordHash,
-        memberships: { create: { organizationId, role: dto.role, permissions: dto.permissions ?? [] } },
+        memberships: { create: { organizationId, role: dto.role, permissions: toJsonField(dto.permissions ?? []) } },
       },
       include: { memberships: true },
     });
@@ -60,7 +66,7 @@ export class UsersService {
     // Returned once, at creation, so the admin can share it — never
     // retrievable again afterwards. The password hash never leaves the server.
     const { passwordHash: _hash, ...safeUser } = user;
-    return { user: safeUser, membership: user.memberships[0], tempPassword };
+    return { user: safeUser, membership: withParsedPermissions(user.memberships[0]), tempPassword };
   }
 
   async updateMembership(organizationId: string, actorId: string | undefined, membershipId: string, dto: UpdateMembershipDto) {
@@ -69,10 +75,10 @@ export class UsersService {
 
     const updated = await this.prisma.membership.update({
       where: { id: membershipId },
-      data: { role: dto.role, permissions: dto.permissions },
+      data: { role: dto.role, permissions: dto.permissions ? toJsonField(dto.permissions) : undefined },
     });
     await this.audit.record({ organizationId, actorId, action: "user.update_membership", entityType: "Membership", entityId: membershipId, metadata: { ...dto } });
-    return updated;
+    return withParsedPermissions(updated);
   }
 
   // The single most common support request: someone is locked out. An admin
