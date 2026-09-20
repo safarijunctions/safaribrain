@@ -4,7 +4,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { PublicDeparture, SeatMapSeat, DepartureGroup } from "../types";
 import { PublicHeader } from "../components/PublicHeader";
-import { VehicleSeatMap } from "../components/VehicleSeatMap";
+import {
+  VehicleSeatMap,
+  SeatSelectionSummary,
+} from "../components/VehicleSeatMap";
 
 const HOLDER_TOKEN_KEY = "safaribrain.holderToken";
 
@@ -159,15 +162,20 @@ export function DepartureSeatMapPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
-        {/* The seat diagram — a van-shaped, clickable seat picker */}
-        <section className="bg-earth-800 rounded-sm p-6 sm:p-8">
-          <p className="text-xs tracking-widest2 uppercase text-brass-300 font-medium mb-6">
+        {/* The seat diagram — a vehicle-shaped, clickable seat picker */}
+        <section className="bg-white border border-sand-200 rounded-sm p-6 sm:p-8 space-y-6">
+          <p className="text-xs tracking-widest2 uppercase text-savannah-600 font-medium">
             Choose your seats
           </p>
           <VehicleSeatMap
             seats={seats}
             selected={selected}
             onToggle={toggleSeat}
+          />
+          <SeatSelectionSummary
+            selectedLabels={seats
+              .filter((s) => selected.includes(s.id))
+              .map((s) => s.label)}
           />
         </section>
 

@@ -2,7 +2,10 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { TradeDeparture, TradeBooking, SeatMapSeat } from "../types";
-import { VehicleSeatMap } from "../components/VehicleSeatMap";
+import {
+  VehicleSeatMap,
+  SeatSelectionSummary,
+} from "../components/VehicleSeatMap";
 
 // The Trade marketplace (§6): another organization's own inventory,
 // browsed and booked wholesale on behalf of an end client. Authenticated
@@ -188,7 +191,7 @@ function TradeSeatBooking({
 
   return (
     <div className="mt-3 border-t border-sand-100 pt-3 space-y-3">
-      <div className="bg-earth-800 p-4">
+      <div className="bg-white border border-sand-200 p-4 space-y-5">
         <VehicleSeatMap
           seats={seats ?? []}
           selected={selected}
@@ -200,6 +203,11 @@ function TradeSeatBooking({
                 : [...prev, seat.id],
             );
           }}
+        />
+        <SeatSelectionSummary
+          selectedLabels={(seats ?? [])
+            .filter((s) => selected.includes(s.id))
+            .map((s) => s.label)}
         />
       </div>
 

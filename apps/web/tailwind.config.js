@@ -96,17 +96,18 @@ export default {
           "almost-full": "#C5933D",
           full: "#9B4A42",
         },
-        // Vehicle seat-picker states (VehicleSeatMap) — reuses the status
-        // palette's semantics (available/held/booked) plus a muted dusty
-        // blue for "selected" and brass for the driver, kept in the same
-        // desaturated family as the rest of the palette rather than the
-        // reference mockup's saturated green/blue/red.
+        // Vehicle seat-picker states (VehicleSeatMap) — literal, unambiguous
+        // colors per the seat-selection spec: green = available, blue =
+        // selected, red = booked, gray = driver. "Held" (another guest's
+        // in-progress hold) isn't one of the spec's four states but is a
+        // real, necessary status, so it gets its own amber so it's never
+        // confused with booked/red.
         seat: {
-          available: "#3F8B5B",
-          selected: "#3D6B8C",
-          held: "#C5933D",
-          booked: "#9B4A42",
-          driver: "#B18A45",
+          available: "#22C55E",
+          selected: "#3B82F6",
+          booked: "#EF4444",
+          driver: "#9CA3AF",
+          held: "#F59E0B",
         },
       },
       fontFamily: {
