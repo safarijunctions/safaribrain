@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import { Permission } from "@safaribrain/shared";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../common/guards/roles.guard";
@@ -21,8 +29,17 @@ export class VehicleRentalListingController {
   constructor(private readonly rentals: VehicleRentalsService) {}
 
   @Post()
-  upsert(@CurrentUser() user: JwtPayload, @Param("vehicleId") vehicleId: string, @Body() dto: UpsertRentalListingDto) {
-    return this.rentals.upsertListing(user.organizationId, user.sub, vehicleId, dto);
+  upsert(
+    @CurrentUser() user: JwtPayload,
+    @Param("vehicleId") vehicleId: string,
+    @Body() dto: UpsertRentalListingDto,
+  ) {
+    return this.rentals.upsertListing(
+      user.organizationId,
+      user.sub,
+      vehicleId,
+      dto,
+    );
   }
 }
 
@@ -44,13 +61,26 @@ export class VehicleExchangeController {
     return this.rentals.listMyListings(user.organizationId);
   }
 
+  @Get("listings/:id/availability")
+  availability(@Param("id") id: string) {
+    return this.rentals.getAvailability(id);
+  }
+
   @Post("listings/:id/requests")
-  request(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: RequestRentalDto) {
+  request(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: RequestRentalDto,
+  ) {
     return this.rentals.requestRental(user.organizationId, id, dto);
   }
 
   @Patch("agreements/:id/respond")
-  respond(@CurrentUser() user: JwtPayload, @Param("id") id: string, @Body() dto: RespondRentalDto) {
+  respond(
+    @CurrentUser() user: JwtPayload,
+    @Param("id") id: string,
+    @Body() dto: RespondRentalDto,
+  ) {
     return this.rentals.respond(user.organizationId, id, dto.decision);
   }
 

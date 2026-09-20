@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { UpsertRentalListingDto } from "./dto/upsert-listing.dto";
@@ -21,13 +27,26 @@ export class VehicleRentalsService {
     private readonly audit: AuditService,
   ) {}
 
-  async upsertListing(organizationId: string, actorId: string | undefined, vehicleId: string, dto: UpsertRentalListingDto) {
-    const vehicle = await this.prisma.vehicle.findFirst({ where: { id: vehicleId, organizationId } });
+  async upsertListing(
+    organizationId: string,
+    actorId: string | undefined,
+    vehicleId: string,
+    dto: UpsertRentalListingDto,
+  ) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId },
+    });
     if (!vehicle) throw new NotFoundException("Vehicle not found");
 
     const listing = await this.prisma.vehicleRentalListing.upsert({
       where: { vehicleId },
-      update: { dailyRate: dto.dailyRate, currency: dto.currency, visibility: dto.visibility, notes: dto.notes, active: dto.active ?? true },
+      update: {
+        dailyRate: dto.dailyRate,
+        currency: dto.currency,
+        visibility: dto.visibility,
+        notes: dto.notes,
+        active: dto.active ?? true,
+      },
       create: {
         organizationId,
         vehicleId,
@@ -38,7 +57,14 @@ export class VehicleRentalsService {
         active: dto.active ?? true,
       },
     });
-    await this.audit.record({ organizationId, actorId, action: "vehicle_rental.listing.upsert", entityType: "VehicleRentalListing", entityId: listing.id, metadata: { vehicleId, dailyRate: dto.dailyRate } });
+    await this.audit.record({
+      organizationId,
+      actorId,
+      action: "vehicle_rental.listing.upsert",
+      entityType: "VehicleRentalListing",
+      entityId: listing.id,
+      metadata: { vehicleId, dailyRate: dto.dailyRate },
+    });
     return listing;
   }
 
@@ -61,29 +87,63 @@ export class VehicleRentalsService {
         organizationId: { not: excludeOrganizationId },
         organization: { verified: true },
       },
-      include: { vehicle: true, organization: { select: { name: true, country: true } } },
+      include: {
+        vehicle: true,
+        organization: { select: { name: true, country: true } },
+      },
       orderBy: { createdAt: "desc" },
     });
   }
 
+  // Design brief's "vehicle availability calendar" — the date ranges a
+  // prospective renter needs to see before picking dates, so a request
+  // isn't submitted blind only to be declined for an obvious conflict.
+  // ACCEPTED ranges are a hard block (same overlap rule `respond()`
+  // enforces); PENDING ranges are surfaced too, separately, since another
+  // renter's outstanding request is real information even though it isn't
+  // binding yet.
+  async getAvailability(listingId: string) {
+    await this.getListingOrThrow(listingId);
+    const agreements = await this.prisma.vehicleRentalAgreement.findMany({
+      where: { listingId, status: { in: ["ACCEPTED", "PENDING"] } },
+      select: { startDate: true, endDate: true, status: true },
+      orderBy: { startDate: "asc" },
+    });
+    return agreements;
+  }
+
   private async getListingOrThrow(listingId: string) {
-    const listing = await this.prisma.vehicleRentalListing.findUnique({ where: { id: listingId }, include: { vehicle: true } });
+    const listing = await this.prisma.vehicleRentalListing.findUnique({
+      where: { id: listingId },
+      include: { vehicle: true },
+    });
     if (!listing) throw new NotFoundException("Rental listing not found");
     return listing;
   }
 
-  async requestRental(renterOrganizationId: string, listingId: string, dto: RequestRentalDto) {
+  async requestRental(
+    renterOrganizationId: string,
+    listingId: string,
+    dto: RequestRentalDto,
+  ) {
     const listing = await this.getListingOrThrow(listingId);
-    if (!listing.active) throw new BadRequestException("This vehicle is not currently available for rent");
+    if (!listing.active)
+      throw new BadRequestException(
+        "This vehicle is not currently available for rent",
+      );
     if (listing.organizationId === renterOrganizationId) {
       throw new BadRequestException("You can't request your own vehicle");
     }
 
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
-    if (endDate < startDate) throw new BadRequestException("End date must be on or after the start date");
+    if (endDate < startDate)
+      throw new BadRequestException(
+        "End date must be on or after the start date",
+      );
 
-    const days = Math.round((endDate.getTime() - startDate.getTime()) / MS_PER_DAY) + 1;
+    const days =
+      Math.round((endDate.getTime() - startDate.getTime()) / MS_PER_DAY) + 1;
     const totalPrice = Number(listing.dailyRate) * days;
 
     const agreement = await this.prisma.vehicleRentalAgreement.create({
@@ -99,7 +159,13 @@ export class VehicleRentalsService {
         message: dto.message,
       },
     });
-    await this.audit.record({ organizationId: renterOrganizationId, action: "vehicle_rental.agreement.request", entityType: "VehicleRentalAgreement", entityId: agreement.id, metadata: { listingId, startDate: dto.startDate, endDate: dto.endDate } });
+    await this.audit.record({
+      organizationId: renterOrganizationId,
+      action: "vehicle_rental.agreement.request",
+      entityType: "VehicleRentalAgreement",
+      entityId: agreement.id,
+      metadata: { listingId, startDate: dto.startDate, endDate: dto.endDate },
+    });
     return agreement;
   }
 
@@ -107,12 +173,22 @@ export class VehicleRentalsService {
   // date range — checked inside the same operation the decision is made
   // in, not just at request time, since two renters can request
   // overlapping dates and the owner can only actually accept one.
-  async respond(ownerOrganizationId: string, agreementId: string, decision: "ACCEPTED" | "DECLINED") {
+  async respond(
+    ownerOrganizationId: string,
+    agreementId: string,
+    decision: "ACCEPTED" | "DECLINED",
+  ) {
     const updated = await this.prisma.$transaction(async (tx) => {
-      const agreement = await tx.vehicleRentalAgreement.findUnique({ where: { id: agreementId } });
+      const agreement = await tx.vehicleRentalAgreement.findUnique({
+        where: { id: agreementId },
+      });
       if (!agreement) throw new NotFoundException("Rental agreement not found");
-      if (agreement.ownerOrganizationId !== ownerOrganizationId) throw new ForbiddenException("Not your listing");
-      if (agreement.status !== "PENDING") throw new BadRequestException(`This request is already ${agreement.status.toLowerCase()}`);
+      if (agreement.ownerOrganizationId !== ownerOrganizationId)
+        throw new ForbiddenException("Not your listing");
+      if (agreement.status !== "PENDING")
+        throw new BadRequestException(
+          `This request is already ${agreement.status.toLowerCase()}`,
+        );
 
       if (decision === "ACCEPTED") {
         const overlapping = await tx.vehicleRentalAgreement.findFirst({
@@ -124,7 +200,9 @@ export class VehicleRentalsService {
           },
         });
         if (overlapping) {
-          throw new ConflictException("This vehicle already has an accepted rental overlapping these dates");
+          throw new ConflictException(
+            "This vehicle already has an accepted rental overlapping these dates",
+          );
         }
       }
 
@@ -137,13 +215,23 @@ export class VehicleRentalsService {
     // comment on why calling AuditService.record() (the outer, non-tx
     // PrismaService connection) from inside an open $transaction
     // self-deadlocks on SQLite's single connection.
-    await this.audit.record({ organizationId: ownerOrganizationId, action: `vehicle_rental.agreement.${decision.toLowerCase()}`, entityType: "VehicleRentalAgreement", entityId: agreementId });
+    await this.audit.record({
+      organizationId: ownerOrganizationId,
+      action: `vehicle_rental.agreement.${decision.toLowerCase()}`,
+      entityType: "VehicleRentalAgreement",
+      entityId: agreementId,
+    });
     return updated;
   }
 
   listMyAgreements(organizationId: string) {
     return this.prisma.vehicleRentalAgreement.findMany({
-      where: { OR: [{ ownerOrganizationId: organizationId }, { renterOrganizationId: organizationId }] },
+      where: {
+        OR: [
+          { ownerOrganizationId: organizationId },
+          { renterOrganizationId: organizationId },
+        ],
+      },
       include: {
         listing: { include: { vehicle: true } },
         ownerOrganization: { select: { name: true } },

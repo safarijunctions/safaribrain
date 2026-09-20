@@ -3,6 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { RentalListing, RentalAgreement, Vehicle } from "../types";
+import {
+  AvailabilityCalendar,
+  AvailabilityRange,
+} from "../components/AvailabilityCalendar";
 
 // The vehicle rental exchange (§6 Trade) — an owner org publishes a fleet
 // vehicle as rentable; another org requests a date-ranged agreement the
@@ -111,6 +115,13 @@ function RequestRentalForm({
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [message, setMessage] = useState("");
+  const { data: availability } = useQuery({
+    queryKey: ["rental-availability", listingId],
+    queryFn: () =>
+      api.get<AvailabilityRange[]>(
+        `/vehicle-exchange/listings/${listingId}/availability`,
+      ),
+  });
   const request = useMutation({
     mutationFn: () =>
       api.post("/vehicle-exchange/listings/" + listingId + "/requests", {
@@ -125,6 +136,11 @@ function RequestRentalForm({
   });
   return (
     <div className="mt-3 border-t border-sand-100 pt-3 grid grid-cols-2 gap-2 text-xs bg-sand-50 p-3">
+      {availability && (
+        <div className="col-span-2">
+          <AvailabilityCalendar ranges={availability} />
+        </div>
+      )}
       <input
         type="date"
         className="border border-sand-300 px-2 py-1.5"
