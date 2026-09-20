@@ -256,7 +256,7 @@ export function MarketplacePage() {
             <h2 className="font-display text-3xl sm:text-4xl text-forest-800 mb-8">
               Destinations across Africa
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-center">
               <div className="lg:col-span-3">
                 <AfricaMap
                   destinations={destinations}
@@ -268,7 +268,7 @@ export function MarketplacePage() {
                   }}
                 />
               </div>
-              <div className="lg:col-span-2 grid grid-cols-2 gap-3">
+              <div className="lg:col-span-2 grid grid-cols-2 gap-3 content-start lg:max-h-[560px] lg:overflow-y-auto lg:pr-1">
                 {destinations.map((d) => (
                   <button
                     key={d.code}

@@ -38,9 +38,7 @@ export function AdminPage() {
   const [tab, setTab] = useState<Tab>("overview");
 
   return (
-    <div
-      className={`mx-auto px-4 sm:px-6 py-8 ${tab === "audit" ? "max-w-6xl" : "max-w-4xl"}`}
-    >
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8">
       <h1 className="font-display text-2xl font-semibold text-forest-800 mb-1">
         Admin Portal
       </h1>
@@ -49,12 +47,12 @@ export function AdminPage() {
         everything you need to help a user when something goes wrong.
       </p>
 
-      <div className="flex gap-1 mb-6 border-b border-sand-200 overflow-x-auto">
+      <div className="flex flex-wrap gap-x-1 gap-y-1.5 mb-6 border-b border-sand-200">
         {TABS.map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition ${
               tab === t
                 ? "border-forest-600 text-forest-700"
                 : "border-transparent text-earth-500 hover:text-earth-700"
