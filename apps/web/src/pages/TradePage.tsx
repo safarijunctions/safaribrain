@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { TradeDeparture, TradeBooking, SeatMapSeat } from "../types";
+import { VehicleSeatMap } from "../components/VehicleSeatMap";
 
 // The Trade marketplace (§6): another organization's own inventory,
 // browsed and booked wholesale on behalf of an end client. Authenticated
@@ -187,36 +188,19 @@ function TradeSeatBooking({
 
   return (
     <div className="mt-3 border-t border-sand-100 pt-3 space-y-3">
-      <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
-        {seats?.map((s) => {
-          const disabled =
-            s.status === "BOOKED" || (s.status === "HELD" && !s.isMine);
-          const isSelected = selected.includes(s.id);
-          return (
-            <button
-              key={s.id}
-              disabled={disabled || held}
-              onClick={() =>
-                setSelected((prev) =>
-                  isSelected
-                    ? prev.filter((id) => id !== s.id)
-                    : [...prev, s.id],
-                )
-              }
-              className={`text-xs px-2 py-1.5 border transition ${
-                s.status === "BOOKED"
-                  ? "bg-sand-100 text-earth-400 border-sand-200"
-                  : s.status === "HELD" && !s.isMine
-                    ? "bg-status-almost-full/10 text-status-almost-full border-status-almost-full/40"
-                    : isSelected
-                      ? "bg-forest-700 text-white border-forest-700"
-                      : "bg-white border-sand-300 hover:border-forest-400"
-              }`}
-            >
-              {s.label}
-            </button>
-          );
-        })}
+      <div className="bg-earth-800 p-4">
+        <VehicleSeatMap
+          seats={seats ?? []}
+          selected={selected}
+          onToggle={(seat) => {
+            if (held) return;
+            setSelected((prev) =>
+              prev.includes(seat.id)
+                ? prev.filter((id) => id !== seat.id)
+                : [...prev, seat.id],
+            );
+          }}
+        />
       </div>
 
       {!held ? (

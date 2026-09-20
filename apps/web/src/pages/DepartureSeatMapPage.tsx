@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
 import { PublicDeparture, SeatMapSeat, DepartureGroup } from "../types";
 import { PublicHeader } from "../components/PublicHeader";
+import { VehicleSeatMap } from "../components/VehicleSeatMap";
 
 const HOLDER_TOKEN_KEY = "safaribrain.holderToken";
 
@@ -15,15 +16,6 @@ function getHolderToken(): string {
   }
   return token;
 }
-
-// The signature interaction (design brief §14) — an airline-style seat
-// diagram on a dark forest panel, not a generic grid of buttons.
-const SEAT_CLASSES: Record<string, string> = {
-  AVAILABLE:
-    "bg-transparent border-white/30 text-white/80 hover:border-brass-400 hover:text-white",
-  HELD: "bg-status-almost-full/20 border-status-almost-full text-status-almost-full",
-  BOOKED: "bg-white/5 border-white/10 text-white/20 cursor-not-allowed",
-};
 
 // §1.2's second buying mode, live: pick specific seats on a fixed
 // departure, hold them (atomically — DeparturesService.holdSeats handles
@@ -70,18 +62,6 @@ export function DepartureSeatMapPage() {
       api.get<DepartureGroup>(`/marketplace/departures/${departureId}/group`),
     refetchInterval: 10_000,
   });
-
-  const rows = useMemo(() => {
-    const byRow = new Map<string, SeatMapSeat[]>();
-    for (const s of seats ?? []) {
-      const row = s.label.replace(/[A-Z]+$/, "");
-      if (!byRow.has(row)) byRow.set(row, []);
-      byRow.get(row)!.push(s);
-    }
-    return Array.from(byRow.entries()).sort(
-      (a, b) => Number(a[0]) - Number(b[0]),
-    );
-  }, [seats]);
 
   const hold = useMutation({
     mutationFn: () =>
@@ -179,59 +159,16 @@ export function DepartureSeatMapPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
-        {/* The seat diagram — dark panel, airline-style */}
+        {/* The seat diagram — a van-shaped, clickable seat picker */}
         <section className="bg-earth-800 rounded-sm p-6 sm:p-8">
-          <p className="text-xs tracking-widest2 uppercase text-brass-300 font-medium mb-1">
+          <p className="text-xs tracking-widest2 uppercase text-brass-300 font-medium mb-6">
             Choose your seats
           </p>
-          <div className="flex gap-4 text-xs text-white/50 mb-6">
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full border border-white/30" />{" "}
-              Available
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-status-almost-full" />{" "}
-              Held
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-white/10" />{" "}
-              Booked
-            </span>
-          </div>
-
-          <div className="flex flex-col items-center gap-2 mb-6">
-            <div className="text-[10px] tracking-widest2 uppercase text-white/30 border border-white/20 rounded-full px-4 py-1">
-              Driver
-            </div>
-          </div>
-
-          <div className="space-y-2.5 flex flex-col items-center">
-            {rows.map(([row, rowSeats]) => (
-              <div key={row} className="flex items-center gap-2.5">
-                <span className="text-[10px] text-white/30 w-3">{row}</span>
-                <div className="flex gap-2.5">
-                  {rowSeats.map((seat) => (
-                    <button
-                      key={seat.id}
-                      onClick={() => toggleSeat(seat)}
-                      disabled={
-                        seat.status === "BOOKED" ||
-                        (seat.status === "HELD" && !seat.isMine)
-                      }
-                      title={seat.type}
-                      className={`h-11 w-11 border text-xs font-medium transition ${
-                        selected.includes(seat.id)
-                          ? "bg-brass-400 border-brass-400 text-earth-900"
-                          : SEAT_CLASSES[seat.status]
-                      }`}
-                    >
-                      {seat.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <VehicleSeatMap
+            seats={seats}
+            selected={selected}
+            onToggle={toggleSeat}
+          />
         </section>
 
         {group && group.count > 0 && (

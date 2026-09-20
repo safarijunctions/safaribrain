@@ -96,6 +96,18 @@ export default {
           "almost-full": "#C5933D",
           full: "#9B4A42",
         },
+        // Vehicle seat-picker states (VehicleSeatMap) — reuses the status
+        // palette's semantics (available/held/booked) plus a muted dusty
+        // blue for "selected" and brass for the driver, kept in the same
+        // desaturated family as the rest of the palette rather than the
+        // reference mockup's saturated green/blue/red.
+        seat: {
+          available: "#3F8B5B",
+          selected: "#3D6B8C",
+          held: "#C5933D",
+          booked: "#9B4A42",
+          driver: "#B18A45",
+        },
       },
       fontFamily: {
         // Large, editorial headings — the "this is beautiful" first
