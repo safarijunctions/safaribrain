@@ -164,9 +164,6 @@ export function DepartureSeatMapPage() {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
         {/* The seat diagram — a vehicle-shaped, clickable seat picker */}
         <section className="bg-white border border-sand-200 rounded-sm p-6 sm:p-8 space-y-6">
-          <p className="text-xs tracking-widest2 uppercase text-savannah-600 font-medium">
-            Choose your seats
-          </p>
           <VehicleSeatMap
             seats={seats}
             selected={selected}

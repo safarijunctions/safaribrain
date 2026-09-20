@@ -4,22 +4,18 @@ import { VehicleShell } from "./seat-map/VehicleShell";
 import { SeatLegend } from "./seat-map/SeatLegend";
 export { SeatSelectionSummary } from "./seat-map/SeatSelectionSummary";
 
-// A top-down safari-vehicle seat picker, matching the reference layout: a
-// rounded vehicle body, a driver's cockpit fixed at the front (right) end
-// with a non-bookable steering-wheel icon, and the passenger cabin behind
-// it as a two-row bench grid (near row / far row) — 3 columns for a
-// 7-seater (6 guest seats + driver), 4 columns for a 9-seater (8 guest
-// seats + driver). Columns = ceil(seatCount / 2), so it degrades
-// gracefully for any other real seat count.
-function splitIntoBenchGrid(seats: SeatMapSeat[]): (SeatMapSeat | null)[][] {
-  const columns = Math.max(1, Math.ceil(seats.length / 2));
-  const rowA: (SeatMapSeat | null)[] = [];
-  const rowB: (SeatMapSeat | null)[] = [];
-  for (let col = 0; col < columns; col++) {
-    rowA.push(seats[col * 2] ?? null);
-    rowB.push(seats[col * 2 + 1] ?? null);
+// A top-down safari-vehicle seat picker matching the reference layout:
+// vertical vehicle body, the driver sharing the front row with the first
+// passenger seat (fixed, non-bookable, excluded from the passenger seat
+// count), and the rest of the cabin below as rows of 2 — degrades
+// gracefully for any real seat count, not just the reference's 6.
+function buildLayout(seats: SeatMapSeat[]) {
+  const [frontSeat = null, ...rest] = seats;
+  const rows: (SeatMapSeat | null)[][] = [];
+  for (let i = 0; i < rest.length; i += 2) {
+    rows.push([rest[i] ?? null, rest[i + 1] ?? null]);
   }
-  return [rowA, rowB];
+  return { frontSeat, rows };
 }
 
 function statusOf(seat: SeatMapSeat, isSelected: boolean): SeatStatus {
@@ -28,10 +24,10 @@ function statusOf(seat: SeatMapSeat, isSelected: boolean): SeatStatus {
   return isSelected ? "selected" : "available";
 }
 
-// The design brief's van-shaped, clickable seat picker. Driver's seat is a
-// fixed, non-bookable icon (never a real Seat row) — positioned in its own
-// cockpit at the vehicle's front, separate from the passenger bench grid
-// and excluded from the passenger seat count.
+// The design brief's vehicle-shaped, clickable seat picker. Driver's seat
+// is a fixed, non-bookable icon (never a real Seat row) in its own cockpit
+// slot, separate from the passenger grid and excluded from the passenger
+// seat count.
 export function VehicleSeatMap({
   seats,
   selected,
@@ -41,7 +37,8 @@ export function VehicleSeatMap({
   selected: string[];
   onToggle: (seat: SeatMapSeat) => void;
 }) {
-  const [rowA, rowB] = splitIntoBenchGrid(seats);
+  const { frontSeat, rows } = buildLayout(seats);
+  const guestCount = seats.length;
 
   const renderSlot = (seat: SeatMapSeat | null, key: number) => {
     if (!seat) {
@@ -61,16 +58,19 @@ export function VehicleSeatMap({
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full overflow-x-auto">
-      <VehicleShell
-        passengerRows={[
-          rowA.map((seat, i) => renderSlot(seat, i)),
-          rowB.map((seat, i) => renderSlot(seat, i)),
-        ]}
-        driver={<DriverSeat />}
-        wheelCount={rowA.length}
-      />
-      <SeatLegend />
+    <div className="flex flex-col items-center gap-4 w-full overflow-x-auto">
+      <p className="text-xs tracking-widest2 uppercase text-savannah-600 font-medium">
+        {guestCount + 1} Seater ({guestCount} Guests + Driver)
+      </p>
+      <div className="flex flex-col sm:flex-row items-center sm:items-start justify-center gap-6 sm:gap-10 w-full">
+        <VehicleShell
+          frontRow={[renderSlot(frontSeat, -1), <DriverSeat key="driver" />]}
+          passengerRows={rows.map((row, i) =>
+            row.map((seat, j) => renderSlot(seat, i * 2 + j)),
+          )}
+        />
+        <SeatLegend />
+      </div>
     </div>
   );
 }

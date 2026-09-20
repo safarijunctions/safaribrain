@@ -1,34 +1,35 @@
 import { ReactNode } from "react";
 
-// The top-down vehicle body: rounded rectangle, a clearly separate front
-// (driver) cockpit, a rear passenger cabin, wheels, mirrors and door
-// handles for readability — everything the reference image's vehicle
-// shows, built as real markup rather than a picture.
+// The top-down vehicle body, vertical orientation matching the reference:
+// gold corner caps and mirrors up top, the driver sharing the front row
+// with the first passenger seat, the rest of the passenger cabin below as
+// rows of 2, and three wheels along the bottom edge.
 export function VehicleShell({
+  frontRow,
   passengerRows,
-  driver,
-  wheelCount,
+  wheelCount = 3,
 }: {
-  passengerRows: ReactNode[];
-  driver: ReactNode;
-  wheelCount: number;
+  frontRow: ReactNode[];
+  passengerRows: ReactNode[][];
+  wheelCount?: number;
 }) {
   return (
     <div className="relative w-fit mx-auto">
-      {/* Wheels */}
-      <div className="absolute bottom-0 left-8 right-8 translate-y-1/2 flex justify-between px-1">
-        {Array.from({ length: Math.max(2, wheelCount) }).map((_, i) => (
-          <span key={i} className="h-2.5 w-5 rounded-sm bg-earth-800" />
-        ))}
-      </div>
+      {/* Top corner caps */}
+      <span className="absolute -top-1.5 left-4 h-3 w-7 rounded-full bg-brass-400 z-10" />
+      <span className="absolute -top-1.5 right-4 h-3 w-7 rounded-full bg-brass-400 z-10" />
+
+      {/* Side mirrors */}
+      <span className="absolute top-9 -left-2.5 h-4 w-3 rounded-sm bg-earth-700" />
+      <span className="absolute top-9 -right-2.5 h-4 w-3 rounded-sm bg-earth-700" />
 
       {/* Vehicle body */}
-      <div className="relative flex items-stretch gap-3 sm:gap-4 bg-white border-2 border-sand-300 rounded-2xl px-4 sm:px-6 py-5 sm:py-6 shadow-md">
-        {/* Rear cap */}
-        <span className="absolute -left-2 top-1/2 -translate-y-1/2 h-16 w-2.5 rounded-l-full bg-sand-300" />
-
-        {/* Passenger cabin: near row (top) / far row (bottom) */}
-        <div className="flex flex-col justify-center gap-2.5">
+      <div className="relative flex flex-col items-center gap-4 bg-gradient-to-b from-earth-400 to-earth-500 border-2 border-earth-700 rounded-[2rem] px-5 sm:px-6 pt-7 pb-6 shadow-lg">
+        {/* Cabin panel */}
+        <div className="flex flex-col gap-2.5 bg-ivory/95 rounded-xl p-3 sm:p-4">
+          <div className="flex items-center justify-center gap-2.5">
+            {frontRow}
+          </div>
           {passengerRows.map((row, i) => (
             <div key={i} className="flex items-center justify-center gap-2.5">
               {row}
@@ -36,19 +37,12 @@ export function VehicleShell({
           ))}
         </div>
 
-        {/* Driver cockpit — front of the vehicle, fixed, not bookable */}
-        <div className="relative flex flex-col items-center justify-center gap-2 pl-3 sm:pl-4 border-l border-sand-200 shrink-0">
-          {/* Side mirrors */}
-          <span className="absolute -top-3 -right-1.5 h-2.5 w-4 rounded-sm bg-sand-300" />
-          <span className="absolute -bottom-3 -right-1.5 h-2.5 w-4 rounded-sm bg-sand-300" />
-          {driver}
-          <span className="text-[9px] tracking-widest2 uppercase text-earth-500">
-            Driver
-          </span>
+        {/* Wheels */}
+        <div className="flex justify-center gap-4">
+          {Array.from({ length: wheelCount }).map((_, i) => (
+            <span key={i} className="h-3 w-6 rounded-sm bg-earth-900" />
+          ))}
         </div>
-
-        {/* Front cap */}
-        <span className="absolute -right-2 top-1/2 -translate-y-1/2 h-20 w-3 rounded-r-full bg-sand-300" />
       </div>
     </div>
   );
