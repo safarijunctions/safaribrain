@@ -14,7 +14,10 @@ export function VehicleShell({
   wheelCount?: number;
 }) {
   return (
-    <div className="relative w-fit mx-auto">
+    // The whole silhouette idles as one rigid unit — a real jeep's body,
+    // mirrors and caps all bounce together on its suspension, not
+    // independently. motion-safe: respects prefers-reduced-motion.
+    <div className="relative w-fit mx-auto motion-safe:animate-jeep-idle">
       {/* Top corner caps */}
       <span className="absolute -top-1.5 left-4 h-3 w-7 rounded-full bg-brass-400 z-10" />
       <span className="absolute -top-1.5 right-4 h-3 w-7 rounded-full bg-brass-400 z-10" />
@@ -37,10 +40,17 @@ export function VehicleShell({
           ))}
         </div>
 
-        {/* Wheels */}
+        {/* Wheels — each kicks up its own little puff of dust, staggered
+            so the idling engine reads as one continuous rumble. */}
         <div className="flex justify-center gap-4">
           {Array.from({ length: wheelCount }).map((_, i) => (
-            <span key={i} className="h-3 w-6 rounded-sm bg-earth-900" />
+            <span key={i} className="relative">
+              <span className="block h-3 w-6 rounded-sm bg-earth-900" />
+              <span
+                className="absolute left-1/2 top-full -translate-x-1/2 mt-0.5 h-1.5 w-1.5 rounded-full bg-sand-300/80 motion-safe:animate-dust-puff"
+                style={{ animationDelay: `${i * 0.4}s` }}
+              />
+            </span>
           ))}
         </div>
       </div>

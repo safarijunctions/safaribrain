@@ -120,6 +120,26 @@ export default {
       letterSpacing: {
         widest2: "0.2em",
       },
+      keyframes: {
+        // A gentle suspension bounce — the vehicle silhouette (body,
+        // mirrors, corner caps, wheels) idles as one rigid unit rather
+        // than looking static.
+        "jeep-idle": {
+          "0%, 100%": { transform: "translateY(0) rotate(0deg)" },
+          "50%": { transform: "translateY(-1.5px) rotate(0.35deg)" },
+        },
+        // A small puff of dust kicked up from under a wheel, looping with
+        // a per-wheel stagger.
+        "dust-puff": {
+          "0%": { transform: "translateY(0) scale(0.5)", opacity: "0" },
+          "25%": { opacity: "0.55" },
+          "100%": { transform: "translateY(7px) scale(1.6)", opacity: "0" },
+        },
+      },
+      animation: {
+        "jeep-idle": "jeep-idle 2.6s ease-in-out infinite",
+        "dust-puff": "dust-puff 1.8s ease-out infinite",
+      },
     },
   },
   plugins: [],

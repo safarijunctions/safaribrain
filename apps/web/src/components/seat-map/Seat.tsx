@@ -47,7 +47,7 @@ export function Seat({
       disabled={disabled}
       title={tooltip}
       aria-label={tooltip}
-      className={`relative h-11 w-10 sm:h-12 sm:w-11 rounded-t-2xl rounded-b-md border-2 flex flex-col items-center justify-end pb-1.5 transition-all shrink-0 ${STATUS_CLASSES[status]}`}
+      className={`relative h-11 w-10 sm:h-12 sm:w-11 rounded-t-2xl rounded-b-md border-2 flex flex-col items-center justify-end pb-1.5 transition-all shrink-0 enabled:hover:-translate-y-0.5 enabled:hover:scale-105 enabled:active:scale-95 ${status === "selected" ? "shadow-[0_0_0_3px_rgba(59,130,246,0.3)]" : ""} ${STATUS_CLASSES[status]}`}
     >
       <span className="absolute top-1 h-2.5 w-6 sm:w-7 rounded-full bg-black/15" />
       <span className="text-[11px] font-semibold leading-none">{number}</span>
