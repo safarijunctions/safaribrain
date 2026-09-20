@@ -55,6 +55,11 @@ export class MarketplaceController {
     return this.departures.getPublicDeparture(id);
   }
 
+  @Get("departures/:id/group")
+  getGroup(@Param("id") id: string) {
+    return this.departures.getPublicGroup(id);
+  }
+
   @Get("departures/:id/seats")
   getSeatMap(
     @Param("id") id: string,

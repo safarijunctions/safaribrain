@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import { PublicDeparture, SeatMapSeat } from "../types";
+import { PublicDeparture, SeatMapSeat, DepartureGroup } from "../types";
 import { PublicHeader } from "../components/PublicHeader";
 
 const HOLDER_TOKEN_KEY = "safaribrain.holderToken";
@@ -58,6 +58,16 @@ export function DepartureSeatMapPage() {
       api.get<SeatMapSeat[]>(
         `/marketplace/departures/${departureId}/seats?holderToken=${holderToken}`,
       ),
+    refetchInterval: 10_000,
+  });
+
+  // Design brief's "showing the real group, with privacy controls" — who's
+  // actually joining, first name + last initial only, never full contact
+  // details. Refetches alongside the seat map so a new booking shows up.
+  const { data: group } = useQuery({
+    queryKey: ["departure-group", departureId],
+    queryFn: () =>
+      api.get<DepartureGroup>(`/marketplace/departures/${departureId}/group`),
     refetchInterval: 10_000,
   });
 
@@ -223,6 +233,19 @@ export function DepartureSeatMapPage() {
             ))}
           </div>
         </section>
+
+        {group && group.count > 0 && (
+          <section className="bg-white border border-sand-200 p-5">
+            <p className="text-xs tracking-widest2 uppercase text-savannah-600 font-medium mb-2">
+              Who's joining
+            </p>
+            <p className="text-sm text-earth-700">
+              {group.count} traveler{group.count === 1 ? "" : "s"} already
+              booked on this departure
+              {group.names.length > 0 ? <>: {group.names.join(", ")}</> : "."}
+            </p>
+          </section>
+        )}
 
         {holdError && <p className="text-xs text-status-full">{holdError}</p>}
 

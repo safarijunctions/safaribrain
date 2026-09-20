@@ -74,6 +74,28 @@ export class DeparturesService {
     return departure;
   }
 
+  // Design brief's "showing the real group, with privacy controls" — a
+  // traveler deciding whether to join a departure can see who else is
+  // actually coming, but only ever a first name + last initial. Never
+  // exposes email/phone/country, or anything from a Contact/Traveler row
+  // beyond that one masked display name.
+  async getPublicGroup(departureId: string) {
+    await this.getPublicDeparture(departureId);
+    const bookings = await this.prisma.booking.findMany({
+      where: { departureId, status: { not: "CANCELLED" } },
+      select: {
+        travelers: { select: { fullName: true } },
+        request: { select: { contact: { select: { fullName: true } } } },
+      },
+    });
+    const names = new Set<string>();
+    for (const b of bookings) {
+      const fullNames = b.travelers.length > 0 ? b.travelers.map((t) => t.fullName) : [b.request.contact.fullName];
+      for (const n of fullNames) names.add(maskName(n));
+    }
+    return { count: names.size, names: Array.from(names).sort() };
+  }
+
   // Shared by both channels: a seat is bookable through this shared
   // mechanism as long as the owning org is verified and the departure is
   // reachable through *some* sales channel (retail listing or trade
@@ -320,6 +342,14 @@ function effectiveStatus(seat: { status: string; heldUntil: Date | null }, now: 
   if (seat.status === "BOOKED") return "BOOKED";
   if (seat.status === "HELD" && seat.heldUntil && seat.heldUntil > now) return "HELD";
   return "AVAILABLE"; // lazy expiry — an expired hold reads as available everywhere, no sweep job needed
+}
+
+// "Laura Bennett" -> "Laura B." — first name plus last-initial only, never
+// the full surname and never anything else off the Contact/Traveler row.
+function maskName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length < 2) return parts[0] ?? fullName;
+  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 }
 
 function generateSeats(totalSeats: number): { label: string; type: "WINDOW" | "AISLE" | "FRONT" }[] {

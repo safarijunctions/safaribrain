@@ -172,6 +172,11 @@ export interface SeatMapSeat {
   isMine: boolean;
 }
 
+export interface DepartureGroup {
+  count: number;
+  names: string[];
+}
+
 export interface AiDraftDay {
   dayNumber: number;
   title: string;
