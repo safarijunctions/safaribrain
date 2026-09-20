@@ -1,23 +1,21 @@
 import { SeatMapSeat } from "../types";
 
-// A top-down safari-vehicle seat picker — driver up front (a fixed,
-// non-bookable icon, not a real Seat row), the front passenger seat beside
-// them, then bench rows of two behind. Chunking real seats into this shape
-// (1, then pairs, with a trailing single row if the count is odd) means it
-// renders correctly for any totalSeats a departure/vehicle actually has,
-// not just the two reference layouts (6 guests+driver / 8 guests+driver) —
-// those two just happen to be what this produces for 6 or 8 real seats.
-function chunkIntoRows(seats: SeatMapSeat[]): SeatMapSeat[][] {
-  if (seats.length === 0) return [];
-  const rows: SeatMapSeat[][] = [[seats[0]]];
-  let i = 1;
-  while (i < seats.length) {
-    const remaining = seats.length - i;
-    const rowSize = remaining === 1 ? 1 : 2;
-    rows.push(seats.slice(i, i + rowSize));
-    i += rowSize;
+// A top-down safari-vehicle seat picker, matching the reference layout
+// exactly: a horizontal van body, a driver's cockpit fixed at the front
+// (right) end with a non-bookable steering-wheel icon, and the passenger
+// cabin behind it as a two-row bench grid (near row / far row) — 3 columns
+// for a 7-seater (6 guest seats + driver), 4 columns for a 9-seater (8
+// guest seats + driver). Columns = ceil(seatCount / 2), so it also
+// degrades gracefully for any other real seat count.
+function splitIntoBenchGrid(seats: SeatMapSeat[]): (SeatMapSeat | null)[][] {
+  const columns = Math.max(1, Math.ceil(seats.length / 2));
+  const rowA: (SeatMapSeat | null)[] = [];
+  const rowB: (SeatMapSeat | null)[] = [];
+  for (let col = 0; col < columns; col++) {
+    rowA.push(seats[col * 2] ?? null);
+    rowB.push(seats[col * 2 + 1] ?? null);
   }
-  return rows;
+  return [rowA, rowB];
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -81,7 +79,7 @@ function Seat({
       onClick={onClick}
       disabled={disabled}
       title={seat.label}
-      className={`h-12 w-12 rounded-md border flex flex-col items-center justify-center gap-0.5 transition ${STATUS_STYLES[kind]}`}
+      className={`h-11 w-11 sm:h-12 sm:w-12 rounded-md border flex flex-col items-center justify-center gap-0.5 transition shrink-0 ${STATUS_STYLES[kind]}`}
     >
       <SeatIcon />
       <span className="text-[10px] font-medium leading-none">{seat.label}</span>
@@ -89,30 +87,10 @@ function Seat({
   );
 }
 
-function DriverIcon() {
-  return (
-    <div
-      title="Driver — not bookable"
-      className="h-12 w-12 rounded-full bg-seat-driver border border-seat-driver/70 flex items-center justify-center"
-    >
-      <svg viewBox="0 0 24 24" className="h-6 w-6 text-white" fill="none">
-        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
-        <circle cx="12" cy="12" r="2" fill="currentColor" />
-        <path
-          d="M12 4v4M12 16v4M4 12h4M16 12h4"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-    </div>
-  );
-}
-
-// The design brief's van-shaped, clickable seat picker — a top-down safari
-// vehicle silhouette (mirrors, tapered nose, rear) with the driver's seat
-// fixed and marked non-bookable, exactly as specified: "Driver seat NOT
-// selectable." Reused wherever a traveler or trade partner picks seats.
+// The design brief's van-shaped, clickable seat picker. Driver's seat is a
+// fixed, non-bookable icon (never a real Seat row) — "Driver seat NOT
+// selectable" — positioned in its own cockpit at the vehicle's front,
+// separate from the passenger bench grid.
 export function VehicleSeatMap({
   seats,
   selected,
@@ -122,42 +100,98 @@ export function VehicleSeatMap({
   selected: string[];
   onToggle: (seat: SeatMapSeat) => void;
 }) {
-  const rows = chunkIntoRows(seats);
+  const [rowA, rowB] = splitIntoBenchGrid(seats);
 
   return (
-    <div className="flex flex-col items-center gap-6">
-      <div className="relative bg-earth-700/60 border border-white/10 rounded-[2.5rem] rounded-t-[3.5rem] px-6 pt-10 pb-8">
-        {/* Side mirrors */}
-        <span className="absolute top-14 -left-2 h-6 w-3 bg-earth-600 rounded-sm" />
-        <span className="absolute top-14 -right-2 h-6 w-3 bg-earth-600 rounded-sm" />
-
-        {/* Front row: driver + front passenger */}
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <DriverIcon />
-          {rows[0]?.map((seat) => (
-            <Seat
-              key={seat.id}
-              seat={seat}
-              selected={selected.includes(seat.id)}
-              onClick={() => onToggle(seat)}
-            />
+    <div className="flex flex-col items-center gap-6 w-full overflow-x-auto">
+      <div className="relative w-fit mx-auto">
+        {/* Wheels */}
+        <div className="absolute bottom-0 left-8 right-8 translate-y-1/2 flex justify-between px-1">
+          {Array.from({ length: Math.max(2, rowA.length) }).map((_, i) => (
+            <span key={i} className="h-2.5 w-5 rounded-sm bg-earth-900" />
           ))}
         </div>
 
-        {/* Remaining bench rows */}
-        <div className="flex flex-col items-center gap-3">
-          {rows.slice(1).map((row, i) => (
-            <div key={i} className="flex items-center justify-center gap-4">
-              {row.map((seat) => (
-                <Seat
-                  key={seat.id}
-                  seat={seat}
-                  selected={selected.includes(seat.id)}
-                  onClick={() => onToggle(seat)}
-                />
-              ))}
+        {/* Van body */}
+        <div className="relative flex items-stretch gap-3 sm:gap-4 bg-gradient-to-b from-earth-500 to-earth-600 border-2 border-earth-800 rounded-l-2xl rounded-r-[2.5rem] px-4 sm:px-6 py-5 sm:py-6 shadow-lg">
+          {/* Rear cap */}
+          <span className="absolute -left-2 top-1/2 -translate-y-1/2 h-16 w-2.5 rounded-l-full bg-earth-800" />
+
+          {/* Passenger bench grid: near row (top) / far row (bottom) */}
+          <div className="flex flex-col justify-center gap-2.5">
+            <div className="flex items-center justify-center gap-2.5">
+              {rowA.map((seat, i) =>
+                seat ? (
+                  <Seat
+                    key={seat.id}
+                    seat={seat}
+                    selected={selected.includes(seat.id)}
+                    onClick={() => onToggle(seat)}
+                  />
+                ) : (
+                  <span
+                    key={i}
+                    className="h-11 w-11 sm:h-12 sm:w-12 shrink-0"
+                  />
+                ),
+              )}
             </div>
-          ))}
+            <div className="flex items-center justify-center gap-2.5">
+              {rowB.map((seat, i) =>
+                seat ? (
+                  <Seat
+                    key={seat.id}
+                    seat={seat}
+                    selected={selected.includes(seat.id)}
+                    onClick={() => onToggle(seat)}
+                  />
+                ) : (
+                  <span
+                    key={i}
+                    className="h-11 w-11 sm:h-12 sm:w-12 shrink-0"
+                  />
+                ),
+              )}
+            </div>
+          </div>
+
+          {/* Driver cockpit — front of the vehicle, fixed, not bookable */}
+          <div className="relative flex flex-col items-center gap-2 pl-3 sm:pl-4 border-l border-earth-400/50 shrink-0">
+            {/* Side mirrors */}
+            <span className="absolute -top-3 -right-1.5 h-2.5 w-4 rounded-sm bg-earth-800" />
+            <span className="absolute -bottom-3 -right-1.5 h-2.5 w-4 rounded-sm bg-earth-800" />
+            <div
+              title="Driver — not bookable"
+              className="h-11 w-11 sm:h-12 sm:w-12 rounded-full bg-seat-driver border border-seat-driver/70 flex items-center justify-center"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="h-6 w-6 text-white"
+                fill="none"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="8"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <circle cx="12" cy="12" r="2" fill="currentColor" />
+                <path
+                  d="M12 4v4M12 16v4M4 12h4M16 12h4"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            <span className="text-[9px] tracking-widest2 uppercase text-white/60">
+              Driver
+            </span>
+          </div>
+
+          {/* Front cap */}
+          <span className="absolute -right-2 top-1/2 -translate-y-1/2 h-20 w-3 rounded-r-full bg-earth-800" />
         </div>
       </div>
 
