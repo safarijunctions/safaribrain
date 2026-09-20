@@ -8,5 +8,6 @@ import { AiJobsController } from "./ai-jobs.controller";
   imports: [AdminModule],
   providers: [LlmService, AiJobsService],
   controllers: [AiJobsController],
+  exports: [LlmService],
 })
 export class AiModule {}

@@ -10,6 +10,6 @@ import { AuditLogController } from "./audit-log.controller";
 @Module({
   providers: [IntegrationsService, UsersService, DashboardService],
   controllers: [IntegrationsController, UsersController, DashboardController, AuditLogController],
-  exports: [IntegrationsService],
+  exports: [IntegrationsService, DashboardService],
 })
 export class AdminModule {}

@@ -121,3 +121,24 @@ Sign in as **admin** and open the "Admin" link in the header:
 
 Admins can also reassign a request's owner directly from its detail page
 (useful when the original owner is unavailable and a client is waiting).
+
+## Jarvis
+
+A read-only assistant available from a floating button on every authenticated
+page (`apps/web/src/components/JarvisWidget.tsx`). Ask it things like
+"what stage is Laura Bennett's enquiry in" or "how many quotes are pending
+approval" and it answers by actually calling into the CRM, bookings, and
+dashboard services (`apps/api/src/jarvis/`) via an Anthropic tool-use loop —
+same `LLM_PROVIDER` integration key as the AI Drafts feature, no separate
+setup. It only has read tools (`dashboard_overview`, `search_requests`,
+`get_request_detail`, `search_bookings`, `get_booking_detail`); there is no
+tool that writes anything, so asking it to approve a quote or record a
+payment gets a plain "I can't do that — go to X" answer rather than a
+pretend action. If no `LLM_PROVIDER` integration is configured yet, it
+returns the same clear error the AI Drafts panel does instead of failing
+silently.
+
+Not there yet: conversation history is client-side only (refreshing the
+page clears it — there's no persisted chat log), and it can't see anything
+outside the five tools above (no place/fee-rule lookups, no audit log, no
+cross-organization data by design).

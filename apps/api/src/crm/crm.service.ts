@@ -80,6 +80,31 @@ export class CrmService {
     });
   }
 
+  // Read-only lookup for Jarvis (§ai/jarvis) — same shape as listRequests
+  // but filterable, so the assistant doesn't have to pull every request in
+  // the org to answer "what's Laura Bennett's enquiry stage".
+  search(organizationId: string, opts: { query?: string; stage?: RequestStage } = {}) {
+    return this.prisma.enquiryRequest.findMany({
+      where: {
+        organizationId,
+        stage: opts.stage,
+        ...(opts.query
+          ? {
+              contact: {
+                OR: [
+                  { fullName: { contains: opts.query, mode: "insensitive" } },
+                  { email: { contains: opts.query, mode: "insensitive" } },
+                ],
+              },
+            }
+          : {}),
+      },
+      include: { contact: true, owner: true, quotes: { select: { id: true, status: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+  }
+
   async getRequest(organizationId: string, id: string) {
     const request = await this.prisma.enquiryRequest.findFirst({
       where: { id, organizationId },

@@ -1,5 +1,6 @@
 import { Outlet, Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "../lib/auth";
+import { JarvisWidget } from "./JarvisWidget";
 
 export function AppShell() {
   const { user, logout } = useAuth();
@@ -40,6 +41,7 @@ export function AppShell() {
       <main className="flex-1 bg-stone-50">
         <Outlet />
       </main>
+      <JarvisWidget />
     </div>
   );
 }

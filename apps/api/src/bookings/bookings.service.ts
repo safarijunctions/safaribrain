@@ -46,6 +46,33 @@ export class BookingsService {
     return booking;
   }
 
+  // Read-only lookup for Jarvis (§ai/jarvis) — filterable so the assistant
+  // can answer "is the Bennett booking paid" without listing every booking
+  // in the org first.
+  search(organizationId: string, opts: { query?: string; status?: BookingStatus } = {}) {
+    return this.prisma.booking.findMany({
+      where: {
+        organizationId,
+        status: opts.status,
+        ...(opts.query
+          ? {
+              request: {
+                contact: {
+                  OR: [
+                    { fullName: { contains: opts.query, mode: "insensitive" } },
+                    { email: { contains: opts.query, mode: "insensitive" } },
+                  ],
+                },
+              },
+            }
+          : {}),
+      },
+      include: { request: { include: { contact: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    });
+  }
+
   async addTraveler(organizationId: string, actorId: string | undefined, bookingId: string, dto: AddTravelerDto) {
     const booking = await this.getOwned(organizationId, bookingId);
     const traveler = await this.prisma.traveler.create({
