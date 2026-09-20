@@ -138,6 +138,14 @@ pretend action. If no `LLM_PROVIDER` integration is configured yet, it
 returns the same clear error the AI Drafts panel does instead of failing
 silently.
 
+You can talk to it instead of typing: tap the mic to speak a question (Web
+Speech API speech-to-text, browser-native, no new backend or API key), and
+toggle 🔈/🔊 in the header to have replies read back out loud — including a
+spoken error when something fails, so a voice conversation doesn't go
+silent on you. Both are feature-detected and hide themselves in browsers
+that don't support them (Firefox, most non-Chromium browsers); typing
+always works everywhere.
+
 Not there yet: conversation history is client-side only (refreshing the
 page clears it — there's no persisted chat log), and it can't see anything
 outside the five tools above (no place/fee-rule lookups, no audit log, no

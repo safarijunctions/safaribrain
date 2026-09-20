@@ -7,15 +7,55 @@ interface JarvisTurn {
   content: string;
 }
 
+// Minimal surface of the Web Speech API this file uses — not in
+// lib.dom.d.ts, and only some browsers implement it (Chrome/Edge; no
+// Firefox, partial Safari), so everything here is feature-detected and
+// degrades to text-only rather than assumed present.
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  [index: number]: { transcript: string };
+}
+interface SpeechRecognitionEventLike {
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+interface SpeechRecognitionLike extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  start(): void;
+  stop(): void;
+  onresult: ((e: SpeechRecognitionEventLike) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+}
+
+function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefined {
+  const w = window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike; webkitSpeechRecognition?: new () => SpeechRecognitionLike };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition;
+}
+
+const speechSupported = typeof window !== "undefined" && Boolean(getSpeechRecognitionCtor());
+const speechSynthesisSupported = typeof window !== "undefined" && "speechSynthesis" in window;
+
 // Floating read-only assistant, available from anywhere inside the
 // authenticated app shell. It can only look things up (CRM/bookings/
 // dashboard, via the API's tool-use loop) — it has no write path, so
 // there's nothing here that needs approval or confirmation before it runs.
+//
+// Voice is a pure front-end layer on top of the same text endpoint: the mic
+// button transcribes speech to text client-side (Web Speech API) and sends
+// it exactly like a typed message; "speak replies" reads the same reply
+// text back out loud. Neither touches the API — Jarvis itself never hears
+// audio or knows the difference.
 export function JarvisWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<JarvisTurn[]>([]);
+  const [listening, setListening] = useState(false);
+  const [speakReplies, setSpeakReplies] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const transcriptRef = useRef("");
 
   const ask = useMutation({
     mutationFn: (messages: JarvisTurn[]) => api.post<{ reply: string; model: string }>("/ai/jarvis/message", { messages }),
@@ -25,23 +65,78 @@ export function JarvisWidget() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [turns, ask.isPending]);
 
-  function send() {
-    const text = input.trim();
-    if (!text || ask.isPending) return;
-    const next = [...turns, { role: "user" as const, content: text }];
+  // Stop listening / talking the moment the panel closes or unmounts, so
+  // Jarvis never keeps the mic open or a voice going in the background.
+  useEffect(() => {
+    if (!open) {
+      recognitionRef.current?.stop();
+      if (speechSynthesisSupported) window.speechSynthesis.cancel();
+    }
+  }, [open]);
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+      if (speechSynthesisSupported) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  function respond(text: string) {
+    setTurns((t) => [...t, { role: "assistant", content: text }]);
+    if (speakReplies && speechSynthesisSupported) {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    }
+  }
+
+  // A failed request is still a reply as far as a spoken conversation is
+  // concerned — a user who asked out loud should hear "no AI provider is
+  // configured", not silence, even though it's an error path.
+  function sendText(text: string) {
+    if (!text.trim() || ask.isPending) return;
+    const next = [...turns, { role: "user" as const, content: text.trim() }];
     setTurns(next);
     setInput("");
     ask.mutate(next, {
-      onSuccess: (res) => setTurns((t) => [...t, { role: "assistant", content: res.reply }]),
-      onError: (err) =>
-        setTurns((t) => [
-          ...t,
-          {
-            role: "assistant",
-            content: err instanceof ApiError ? err.message : "Something went wrong reaching Jarvis.",
-          },
-        ]),
+      onSuccess: (res) => respond(res.reply),
+      onError: (err) => respond(err instanceof ApiError ? err.message : "Something went wrong reaching Jarvis."),
     });
+  }
+
+  function toggleListening() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const Ctor = getSpeechRecognitionCtor();
+    if (!Ctor) return;
+    if (speechSynthesisSupported) window.speechSynthesis.cancel();
+
+    const recognition = new Ctor();
+    recognition.lang = "en-US";
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    transcriptRef.current = "";
+
+    recognition.onresult = (e) => {
+      let text = "";
+      for (let i = 0; i < e.results.length; i++) text += e.results[i][0].transcript;
+      transcriptRef.current = text;
+      setInput(text);
+    };
+    recognition.onend = () => {
+      setListening(false);
+      recognitionRef.current = null;
+      const text = transcriptRef.current.trim();
+      if (text) sendText(text);
+    };
+    recognition.onerror = () => {
+      setListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    setListening(true);
+    recognition.start();
   }
 
   if (!open) {
@@ -63,16 +158,31 @@ export function JarvisWidget() {
           <p className="font-display font-semibold text-sm leading-tight">Jarvis</p>
           <p className="text-[11px] text-white/70 leading-tight">Read-only — asks, never acts</p>
         </div>
-        <button onClick={() => setOpen(false)} className="text-white/80 hover:text-white text-lg leading-none" aria-label="Close">
-          ×
-        </button>
+        <div className="flex items-center gap-1">
+          {speechSynthesisSupported && (
+            <button
+              onClick={() => {
+                setSpeakReplies((v) => !v);
+                window.speechSynthesis.cancel();
+              }}
+              aria-pressed={speakReplies}
+              title={speakReplies ? "Spoken replies on" : "Spoken replies off"}
+              className={`text-sm leading-none rounded px-1.5 py-1 transition ${speakReplies ? "bg-white/25 text-white" : "text-white/70 hover:text-white"}`}
+            >
+              {speakReplies ? "🔊" : "🔈"}
+            </button>
+          )}
+          <button onClick={() => setOpen(false)} className="text-white/80 hover:text-white text-lg leading-none px-1" aria-label="Close">
+            ×
+          </button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-2 bg-stone-50">
         {turns.length === 0 && (
           <p className="text-xs text-stone-500 px-1">
             Ask about enquiries, quotes, or bookings — e.g. "what's the status of Laura Bennett's enquiry" or "how many
-            quotes are pending approval". Jarvis can only look things up, not change anything.
+            quotes are pending approval". {speechSupported ? "Type, or tap the mic to talk to it." : "Jarvis can only look things up, not change anything."}
           </p>
         )}
         {turns.map((t, i) => (
@@ -94,20 +204,33 @@ export function JarvisWidget() {
       </div>
 
       <div className="border-t border-stone-200 p-2 flex gap-2 shrink-0">
+        {speechSupported && (
+          <button
+            onClick={toggleListening}
+            disabled={ask.isPending}
+            aria-pressed={listening}
+            title={listening ? "Stop listening" : "Talk to Jarvis"}
+            className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${
+              listening ? "bg-red-600 text-white animate-pulse" : "border border-stone-300 hover:bg-stone-50"
+            }`}
+          >
+            🎤
+          </button>
+        )}
         <input
           className="flex-1 border border-stone-300 rounded-lg px-3 py-2 text-sm"
-          placeholder="Ask Jarvis…"
+          placeholder={listening ? "Listening…" : "Ask Jarvis…"}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              send();
+              sendText(input);
             }
           }}
         />
         <button
-          onClick={send}
+          onClick={() => sendText(input)}
           disabled={!input.trim() || ask.isPending}
           className="bg-clay-700 hover:bg-clay-800 text-white text-sm font-medium rounded-lg px-3 py-2 disabled:opacity-50"
         >
