@@ -142,9 +142,22 @@ You can talk to it instead of typing: tap the mic to speak a question (Web
 Speech API speech-to-text, browser-native, no new backend or API key), and
 toggle 🔈/🔊 in the header to have replies read back out loud — including a
 spoken error when something fails, so a voice conversation doesn't go
-silent on you. Both are feature-detected and hide themselves in browsers
-that don't support them (Firefox, most non-Chromium browsers); typing
-always works everywhere.
+silent on you. A mic permission denial or other recognition error also gets
+a plain message instead of nothing happening. Both are feature-detected and
+hide themselves in browsers that don't support them (Firefox, most
+non-Chromium browsers); typing always works everywhere.
+
+Because SafariBrain's marketplace lets anyone submit an enquiry with no
+login, Jarvis's tools can surface free text a member of the public typed
+themselves (a contact's name, enquiry notes). Its system prompt explicitly
+tells the model to treat that text as data to report, never as instructions
+to follow, and to flag anything that reads like an attempt to manipulate it
+rather than act on it.
+
+The client only ever sends the most recent 20 messages of a conversation to
+the API (matching the server's own cap) — the full transcript still stays
+visible in the panel, but a long back-and-forth doesn't dead-end every
+future message with a validation error once it grows past that.
 
 Not there yet: conversation history is client-side only (refreshing the
 page clears it — there's no persisted chat log), and it can't see anything

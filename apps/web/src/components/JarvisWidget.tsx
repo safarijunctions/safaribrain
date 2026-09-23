@@ -18,6 +18,9 @@ interface SpeechRecognitionResultLike {
 interface SpeechRecognitionEventLike {
   results: ArrayLike<SpeechRecognitionResultLike>;
 }
+interface SpeechRecognitionErrorEventLike {
+  error: string;
+}
 interface SpeechRecognitionLike extends EventTarget {
   lang: string;
   interimResults: boolean;
@@ -26,7 +29,7 @@ interface SpeechRecognitionLike extends EventTarget {
   stop(): void;
   onresult: ((e: SpeechRecognitionEventLike) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((e: SpeechRecognitionErrorEventLike) => void) | null;
 }
 
 function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefined {
@@ -36,6 +39,13 @@ function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefin
 
 const speechSupported = typeof window !== "undefined" && Boolean(getSpeechRecognitionCtor());
 const speechSynthesisSupported = typeof window !== "undefined" && "speechSynthesis" in window;
+
+// Must match (or stay under) the API's JarvisMessageDto.messages @ArrayMaxSize
+// — the client sends only the most recent slice of a long conversation so a
+// deep chat never hits that cap and dead-ends every future message with a
+// raw validation error. Full history still stays visible in the panel; only
+// what's actually sent to the model gets windowed.
+const MAX_SENT_TURNS = 20;
 
 // Floating read-only assistant, available from anywhere inside the
 // authenticated app shell. It can only look things up (CRM/bookings/
@@ -96,7 +106,7 @@ export function JarvisWidget() {
     const next = [...turns, { role: "user" as const, content: text.trim() }];
     setTurns(next);
     setInput("");
-    ask.mutate(next, {
+    ask.mutate(next.slice(-MAX_SENT_TURNS), {
       onSuccess: (res) => respond(res.reply),
       onError: (err) => respond(err instanceof ApiError ? err.message : "Something went wrong reaching Jarvis."),
     });
@@ -129,9 +139,20 @@ export function JarvisWidget() {
       const text = transcriptRef.current.trim();
       if (text) sendText(text);
     };
-    recognition.onerror = () => {
+    recognition.onerror = (e) => {
       setListening(false);
       recognitionRef.current = null;
+      // Silence-timeout ("no-speech") is expected if someone taps the mic
+      // and changes their mind — not worth interrupting them over. Anything
+      // else (mic permission denied, no mic, network hiccup) needs to say
+      // something, or a voice-first feature just looks broken.
+      if (e?.error && e.error !== "no-speech" && e.error !== "aborted") {
+        const message =
+          e.error === "not-allowed" || e.error === "permission-denied" || e.error === "service-not-allowed"
+            ? "I couldn't access your microphone — check this site's mic permission in your browser settings."
+            : "Voice input hit a snag — try again, or type your question instead.";
+        respond(message);
+      }
     };
 
     recognitionRef.current = recognition;
@@ -166,6 +187,7 @@ export function JarvisWidget() {
                 window.speechSynthesis.cancel();
               }}
               aria-pressed={speakReplies}
+              aria-label={speakReplies ? "Spoken replies on" : "Spoken replies off"}
               title={speakReplies ? "Spoken replies on" : "Spoken replies off"}
               className={`text-sm leading-none rounded px-1.5 py-1 transition ${speakReplies ? "bg-white/25 text-white" : "text-white/70 hover:text-white"}`}
             >
@@ -209,6 +231,7 @@ export function JarvisWidget() {
             onClick={toggleListening}
             disabled={ask.isPending}
             aria-pressed={listening}
+            aria-label={listening ? "Stop listening" : "Talk to Jarvis"}
             title={listening ? "Stop listening" : "Talk to Jarvis"}
             className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${
               listening ? "bg-red-600 text-white animate-pulse" : "border border-stone-300 hover:bg-stone-50"
