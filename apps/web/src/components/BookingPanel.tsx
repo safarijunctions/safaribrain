@@ -4,23 +4,33 @@ import { api } from "../lib/api";
 import { Booking, Vehicle } from "../types";
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-stone-100 text-stone-700",
-  CONFIRMED: "bg-sunset-100 text-sunset-700",
-  PAID: "bg-acacia-100 text-acacia-800",
-  ACTIVE: "bg-blue-100 text-blue-800",
-  COMPLETED: "bg-stone-200 text-stone-700",
-  CANCELLED: "bg-red-100 text-red-700",
+  PENDING: "bg-sand-100 text-earth-700",
+  CONFIRMED: "bg-brass-100 text-brass-700",
+  PAID: "bg-moss-100 text-moss-800",
+  ACTIVE: "bg-savannah-100 text-savannah-700",
+  COMPLETED: "bg-sand-200 text-earth-700",
+  CANCELLED: "bg-status-full/10 text-status-full",
 };
 
-const PAYMENT_METHODS = ["BANK_TRANSFER", "CASH", "MOBILE_MONEY_MANUAL"] as const;
+const PAYMENT_METHODS = [
+  "BANK_TRANSFER",
+  "CASH",
+  "MOBILE_MONEY_MANUAL",
+] as const;
 
 const CONFIRMATION_STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-stone-100 text-stone-700",
-  CONFIRMED: "bg-acacia-100 text-acacia-800",
-  DECLINED: "bg-red-100 text-red-700",
+  PENDING: "bg-sand-100 text-earth-700",
+  CONFIRMED: "bg-moss-100 text-moss-800",
+  DECLINED: "bg-status-full/10 text-status-full",
 };
 
-export function BookingPanel({ booking, onChanged }: { booking: Booking; onChanged: () => void }) {
+export function BookingPanel({
+  booking,
+  onChanged,
+}: {
+  booking: Booking;
+  onChanged: () => void;
+}) {
   const qc = useQueryClient();
   const [showTravelerForm, setShowTravelerForm] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -40,7 +50,9 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
   const [supplierName, setSupplierName] = useState("");
   const [supplierType, setSupplierType] = useState("");
   const [supplierNeededBy, setSupplierNeededBy] = useState("");
-  const [referenceDrafts, setReferenceDrafts] = useState<Record<string, string>>({});
+  const [referenceDrafts, setReferenceDrafts] = useState<
+    Record<string, string>
+  >({});
 
   const { data: vehicles } = useQuery({
     queryKey: ["fleet-vehicles"],
@@ -69,7 +81,13 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
   });
 
   const updateLogistics = useMutation({
-    mutationFn: () => api.patch(`/bookings/${booking.id}/logistics`, { guideName, guidePhone, pickupNotes, vehicleId: vehicleId || null }),
+    mutationFn: () =>
+      api.patch(`/bookings/${booking.id}/logistics`, {
+        guideName,
+        guidePhone,
+        pickupNotes,
+        vehicleId: vehicleId || null,
+      }),
     onSuccess: () => {
       setShowLogisticsForm(false);
       invalidate();
@@ -93,8 +111,17 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
   });
 
   const updateSupplierConfirmation = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: "CONFIRMED" | "DECLINED" | "PENDING" }) =>
-      api.patch(`/bookings/${booking.id}/supplier-confirmations/${id}`, { status, referenceCode: referenceDrafts[id] || undefined }),
+    mutationFn: ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: "CONFIRMED" | "DECLINED" | "PENDING";
+    }) =>
+      api.patch(`/bookings/${booking.id}/supplier-confirmations/${id}`, {
+        status,
+        referenceCode: referenceDrafts[id] || undefined,
+      }),
     onSuccess: invalidate,
   });
 
@@ -133,12 +160,21 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
   const ticketReady = ["PAID", "ACTIVE", "COMPLETED"].includes(booking.status);
 
   return (
-    <div className="border border-stone-200 rounded-xl p-4 shadow-sm shadow-clay-900/5 space-y-4">
+    <div className="border border-sand-200 p-4 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[booking.status] ?? "bg-stone-100"}`}>{booking.status}</span>
-        <p className="font-display text-lg font-semibold text-clay-800">
-          {booking.currency} {Number(booking.amountPaid).toLocaleString()} / {Number(booking.totalPrice).toLocaleString()}
-          {balanceDue > 0 && <span className="text-xs text-stone-400 font-normal ml-1.5">({booking.currency} {balanceDue.toLocaleString()} due)</span>}
+        <span
+          className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_COLORS[booking.status] ?? "bg-sand-100"}`}
+        >
+          {booking.status}
+        </span>
+        <p className="font-display text-lg font-semibold text-forest-800">
+          {booking.currency} {Number(booking.amountPaid).toLocaleString()} /{" "}
+          {Number(booking.totalPrice).toLocaleString()}
+          {balanceDue > 0 && (
+            <span className="text-xs text-earth-400 font-normal ml-1.5">
+              ({booking.currency} {balanceDue.toLocaleString()} due)
+            </span>
+          )}
         </p>
       </div>
 
@@ -146,14 +182,14 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
         <button
           onClick={() => markCompleted.mutate()}
           disabled={markCompleted.isPending}
-          className="text-xs font-medium border border-acacia-300 text-acacia-700 hover:bg-acacia-50 rounded px-3 py-1.5 disabled:opacity-50"
+          className="text-xs font-medium border border-moss-300 text-moss-700 hover:bg-moss-50 rounded px-3 py-1.5 disabled:opacity-50"
         >
           {markCompleted.isPending ? "Marking…" : "Mark trip completed"}
         </button>
       )}
       {booking.status === "COMPLETED" && (
-        <p className="text-xs text-stone-500">
-          Trip completed —{" "}
+        <p className="text-xs text-earth-500">
+          Trip completed —{""}
           {booking.review
             ? `traveler ${booking.review.status === "PENDING" ? "left a review, awaiting moderation" : `left a ${booking.review.rating}★ review (${booking.review.status.toLowerCase()})`}`
             : "the traveler can now leave a review from their booking status page."}
@@ -162,34 +198,39 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
 
       {/* Travelers */}
       <div>
-        <p className="text-xs font-medium text-stone-500 mb-1.5">Travelers</p>
-        {booking.travelers.length === 0 && <p className="text-xs text-stone-400">None added yet.</p>}
+        <p className="text-xs font-medium text-earth-500 mb-1.5">Travelers</p>
+        {booking.travelers.length === 0 && (
+          <p className="text-xs text-earth-400">None added yet.</p>
+        )}
         <ul className="text-sm space-y-1">
           {booking.travelers.map((t) => (
             <li key={t.id}>{t.fullName}</li>
           ))}
         </ul>
         {!showTravelerForm ? (
-          <button onClick={() => setShowTravelerForm(true)} className="text-xs text-clay-700 hover:underline mt-1.5">
+          <button
+            onClick={() => setShowTravelerForm(true)}
+            className="text-xs text-forest-700 hover:underline mt-1.5"
+          >
             + Add traveler
           </button>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
             <input
-              className="sm:col-span-2 border border-stone-300 rounded px-2 py-1.5"
+              className="sm:col-span-2 border border-sand-300 rounded px-2 py-1.5"
               placeholder="Full name"
               value={travelerName}
               onChange={(e) => setTravelerName(e.target.value)}
             />
             <input
               type="date"
-              className="border border-stone-300 rounded px-2 py-1.5"
+              className="border border-sand-300 rounded px-2 py-1.5"
               placeholder="Date of birth"
               value={travelerDob}
               onChange={(e) => setTravelerDob(e.target.value)}
             />
             <input
-              className="border border-stone-300 rounded px-2 py-1.5"
+              className="border border-sand-300 rounded px-2 py-1.5"
               placeholder="Passport #"
               value={travelerPassport}
               onChange={(e) => setTravelerPassport(e.target.value)}
@@ -198,11 +239,14 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
               <button
                 onClick={() => addTraveler.mutate()}
                 disabled={!travelerName || addTraveler.isPending}
-                className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+                className="font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
               >
                 Add
               </button>
-              <button onClick={() => setShowTravelerForm(false)} className="border border-stone-300 rounded px-3 py-1.5">
+              <button
+                onClick={() => setShowTravelerForm(false)}
+                className="border border-sand-300 rounded px-3 py-1.5"
+              >
                 Cancel
               </button>
             </div>
@@ -212,53 +256,82 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
 
       {/* Guide/vehicle/pickup logistics — internal only, feeds the guide manifest */}
       <div>
-        <p className="text-xs font-medium text-stone-500 mb-1.5">Guide, vehicle & pickup logistics</p>
+        <p className="text-xs font-medium text-earth-500 mb-1.5">
+          Guide, vehicle & pickup logistics
+        </p>
         {!showLogisticsForm ? (
           <div className="text-sm space-y-0.5">
-            <p>{booking.guideName ? `${booking.guideName}${booking.guidePhone ? ` (${booking.guidePhone})` : ""}` : <span className="text-stone-400">No guide assigned yet.</span>}</p>
+            <p>
+              {booking.guideName ? (
+                `${booking.guideName}${booking.guidePhone ? ` (${booking.guidePhone})` : ""}`
+              ) : (
+                <span className="text-earth-400">No guide assigned yet.</span>
+              )}
+            </p>
             <p>
               {booking.vehicle ? (
                 <>
                   {booking.vehicle.name} ({booking.vehicle.registrationNumber})
-                  {booking.vehicle.complianceStatus !== "OK" && booking.vehicle.complianceStatus !== "NOT_TRACKED" && (
-                    <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${booking.vehicle.complianceStatus === "EXPIRED" ? "bg-red-100 text-red-700" : "bg-sunset-100 text-sunset-700"}`}>
-                      {booking.vehicle.complianceStatus === "EXPIRED" ? "compliance expired" : "compliance expiring soon"}
-                    </span>
-                  )}
+                  {booking.vehicle.complianceStatus !== "OK" &&
+                    booking.vehicle.complianceStatus !== "NOT_TRACKED" && (
+                      <span
+                        className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${booking.vehicle.complianceStatus === "EXPIRED" ? "bg-status-full/10 text-status-full" : "bg-brass-100 text-brass-700"}`}
+                      >
+                        {booking.vehicle.complianceStatus === "EXPIRED"
+                          ? "compliance expired"
+                          : "compliance expiring soon"}
+                      </span>
+                    )}
                 </>
               ) : (
-                <span className="text-stone-400">No vehicle assigned yet.</span>
+                <span className="text-earth-400">No vehicle assigned yet.</span>
               )}
             </p>
-            {booking.pickupNotes && <p className="text-xs text-stone-500">{booking.pickupNotes}</p>}
-            <button onClick={() => setShowLogisticsForm(true)} className="text-xs text-clay-700 hover:underline mt-1">
-              {booking.guideName || booking.vehicle ? "Edit" : "+ Assign guide/vehicle"}
+            {booking.pickupNotes && (
+              <p className="text-xs text-earth-500">{booking.pickupNotes}</p>
+            )}
+            <button
+              onClick={() => setShowLogisticsForm(true)}
+              className="text-xs text-forest-700 hover:underline mt-1"
+            >
+              {booking.guideName || booking.vehicle
+                ? "Edit"
+                : "+ Assign guide/vehicle"}
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1 text-xs">
             <input
-              className="border border-stone-300 rounded px-2 py-1.5"
+              className="border border-sand-300 rounded px-2 py-1.5"
               placeholder="Guide/driver name"
               value={guideName}
               onChange={(e) => setGuideName(e.target.value)}
             />
             <input
-              className="border border-stone-300 rounded px-2 py-1.5"
+              className="border border-sand-300 rounded px-2 py-1.5"
               placeholder="Guide phone"
               value={guidePhone}
               onChange={(e) => setGuidePhone(e.target.value)}
             />
-            <select className="sm:col-span-2 border border-stone-300 rounded px-2 py-1.5" value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
+            <select
+              className="sm:col-span-2 border border-sand-300 rounded px-2 py-1.5"
+              value={vehicleId}
+              onChange={(e) => setVehicleId(e.target.value)}
+            >
               <option value="">No vehicle assigned</option>
               {vehicles?.map((v) => (
                 <option key={v.id} value={v.id}>
-                  {v.name} ({v.registrationNumber}){v.complianceStatus === "EXPIRED" ? " — compliance expired" : v.complianceStatus === "EXPIRING_SOON" ? " — compliance expiring soon" : ""}
+                  {v.name} ({v.registrationNumber})
+                  {v.complianceStatus === "EXPIRED"
+                    ? " — compliance expired"
+                    : v.complianceStatus === "EXPIRING_SOON"
+                      ? " — compliance expiring soon"
+                      : ""}
                 </option>
               ))}
             </select>
             <textarea
-              className="sm:col-span-2 border border-stone-300 rounded px-2 py-1.5"
+              className="sm:col-span-2 border border-sand-300 rounded px-2 py-1.5"
               placeholder="Pickup notes (location, flight number, time…)"
               rows={2}
               value={pickupNotes}
@@ -268,11 +341,14 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
               <button
                 onClick={() => updateLogistics.mutate()}
                 disabled={updateLogistics.isPending}
-                className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+                className="font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
               >
                 Save
               </button>
-              <button onClick={() => setShowLogisticsForm(false)} className="border border-stone-300 rounded px-3 py-1.5">
+              <button
+                onClick={() => setShowLogisticsForm(false)}
+                className="border border-sand-300 rounded px-3 py-1.5"
+              >
                 Cancel
               </button>
             </div>
@@ -280,39 +356,72 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
         )}
       </div>
 
-      {/* Supplier confirmations — §4.3 "calendar/supplier confirmations":
-          a checklist of lodges/permits/transport the operator needs a yes
-          from before a trip is ready, independent of payment status. */}
+      {/* Supplier confirmations — §4.3"calendar/supplier confirmations":
+ a checklist of lodges/permits/transport the operator needs a yes
+ from before a trip is ready, independent of payment status. */}
       <div>
-        <p className="text-xs font-medium text-stone-500 mb-1.5">Supplier confirmations</p>
-        {booking.supplierConfirmations.length === 0 && <p className="text-xs text-stone-400">None added yet.</p>}
+        <p className="text-xs font-medium text-earth-500 mb-1.5">
+          Supplier confirmations
+        </p>
+        {booking.supplierConfirmations.length === 0 && (
+          <p className="text-xs text-earth-400">None added yet.</p>
+        )}
         <ul className="text-sm space-y-1.5">
           {booking.supplierConfirmations.map((c) => (
-            <li key={c.id} className="flex items-center justify-between gap-2 flex-wrap">
+            <li
+              key={c.id}
+              className="flex items-center justify-between gap-2 flex-wrap"
+            >
               <span>
                 {c.supplierName}
-                {c.supplierType && <span className="text-stone-400"> · {c.supplierType}</span>}
-                {c.referenceCode && <span className="text-stone-400"> · ref {c.referenceCode}</span>}
+                {c.supplierType && (
+                  <span className="text-earth-400"> · {c.supplierType}</span>
+                )}
+                {c.referenceCode && (
+                  <span className="text-earth-400">
+                    {" "}
+                    · ref {c.referenceCode}
+                  </span>
+                )}
               </span>
               <span className="flex items-center gap-1.5">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${CONFIRMATION_STATUS_COLORS[c.status]}`}>{c.status}</span>
+                <span
+                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${CONFIRMATION_STATUS_COLORS[c.status]}`}
+                >
+                  {c.status}
+                </span>
                 {c.status === "PENDING" && (
                   <>
                     <input
-                      className="border border-stone-300 rounded px-1.5 py-1 text-xs w-24"
+                      className="border border-sand-300 rounded px-1.5 py-1 text-xs w-24"
                       placeholder="Ref #"
                       value={referenceDrafts[c.id] ?? ""}
-                      onChange={(e) => setReferenceDrafts((d) => ({ ...d, [c.id]: e.target.value }))}
+                      onChange={(e) =>
+                        setReferenceDrafts((d) => ({
+                          ...d,
+                          [c.id]: e.target.value,
+                        }))
+                      }
                     />
                     <button
-                      onClick={() => updateSupplierConfirmation.mutate({ id: c.id, status: "CONFIRMED" })}
-                      className="text-xs text-acacia-700 hover:underline"
+                      onClick={() =>
+                        updateSupplierConfirmation.mutate({
+                          id: c.id,
+                          status: "CONFIRMED",
+                        })
+                      }
+                      className="text-xs text-moss-700 hover:underline"
                     >
                       Confirm
                     </button>
                     <button
-                      onClick={() => updateSupplierConfirmation.mutate({ id: c.id, status: "DECLINED" })}
-                      className="text-xs text-red-600 hover:underline"
+                      onClick={() =>
+                        updateSupplierConfirmation.mutate({
+                          id: c.id,
+                          status: "DECLINED",
+                        })
+                      }
+                      className="text-xs text-status-full hover:underline"
                     >
                       Decline
                     </button>
@@ -323,26 +432,29 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
           ))}
         </ul>
         {!showSupplierForm ? (
-          <button onClick={() => setShowSupplierForm(true)} className="text-xs text-clay-700 hover:underline mt-1.5">
+          <button
+            onClick={() => setShowSupplierForm(true)}
+            className="text-xs text-forest-700 hover:underline mt-1.5"
+          >
             + Add supplier confirmation
           </button>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
             <input
-              className="sm:col-span-2 border border-stone-300 rounded px-2 py-1.5"
+              className="sm:col-span-2 border border-sand-300 rounded px-2 py-1.5"
               placeholder="Supplier (e.g. Serena Lodge)"
               value={supplierName}
               onChange={(e) => setSupplierName(e.target.value)}
             />
             <input
-              className="border border-stone-300 rounded px-2 py-1.5"
+              className="border border-sand-300 rounded px-2 py-1.5"
               placeholder="Type (Lodge, Permit…)"
               value={supplierType}
               onChange={(e) => setSupplierType(e.target.value)}
             />
             <input
               type="date"
-              className="border border-stone-300 rounded px-2 py-1.5"
+              className="border border-sand-300 rounded px-2 py-1.5"
               value={supplierNeededBy}
               onChange={(e) => setSupplierNeededBy(e.target.value)}
             />
@@ -350,11 +462,14 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
               <button
                 onClick={() => addSupplierConfirmation.mutate()}
                 disabled={!supplierName || addSupplierConfirmation.isPending}
-                className="font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
+                className="font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-3 py-1.5 disabled:opacity-50"
               >
                 Add
               </button>
-              <button onClick={() => setShowSupplierForm(false)} className="border border-stone-300 rounded px-3 py-1.5">
+              <button
+                onClick={() => setShowSupplierForm(false)}
+                className="border border-sand-300 rounded px-3 py-1.5"
+              >
                 Cancel
               </button>
             </div>
@@ -364,13 +479,18 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
 
       {/* Payments */}
       <div>
-        <p className="text-xs font-medium text-stone-500 mb-1.5">Payments</p>
-        {booking.payments.length === 0 && <p className="text-xs text-stone-400">None recorded yet.</p>}
+        <p className="text-xs font-medium text-earth-500 mb-1.5">Payments</p>
+        {booking.payments.length === 0 && (
+          <p className="text-xs text-earth-400">None recorded yet.</p>
+        )}
         <ul className="text-sm space-y-1">
           {booking.payments.map((p) => (
             <li key={p.id} className="flex items-center justify-between">
               <span>
-                {p.method.replace(/_/g, " ")} {p.reference && <span className="text-stone-400">({p.reference})</span>}
+                {p.method.replace(/_/g, "")}{" "}
+                {p.reference && (
+                  <span className="text-earth-400">({p.reference})</span>
+                )}
               </span>
               <span className="tabular-nums">
                 {p.currency} {Number(p.amount).toLocaleString()}
@@ -380,27 +500,34 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
         </ul>
         {booking.status !== "CANCELLED" &&
           (!showPaymentForm ? (
-            <button onClick={() => setShowPaymentForm(true)} className="text-xs text-clay-700 hover:underline mt-1.5">
+            <button
+              onClick={() => setShowPaymentForm(true)}
+              className="text-xs text-forest-700 hover:underline mt-1.5"
+            >
               + Record payment
             </button>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
               <input
                 type="number"
-                className="border border-stone-300 rounded px-2 py-1.5"
+                className="border border-sand-300 rounded px-2 py-1.5"
                 placeholder="Amount"
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
               />
-              <select className="border border-stone-300 rounded px-2 py-1.5" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+              <select
+                className="border border-sand-300 rounded px-2 py-1.5"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+              >
                 {PAYMENT_METHODS.map((m) => (
                   <option key={m} value={m}>
-                    {m.replace(/_/g, " ")}
+                    {m.replace(/_/g, "")}
                   </option>
                 ))}
               </select>
               <input
-                className="border border-stone-300 rounded px-2 py-1.5"
+                className="border border-sand-300 rounded px-2 py-1.5"
                 placeholder="Reference (optional)"
                 value={paymentReference}
                 onChange={(e) => setPaymentReference(e.target.value)}
@@ -409,37 +536,65 @@ export function BookingPanel({ booking, onChanged }: { booking: Booking; onChang
                 <button
                   onClick={() => recordPayment.mutate()}
                   disabled={!paymentAmount || recordPayment.isPending}
-                  className="flex-1 font-medium bg-clay-600 hover:bg-clay-700 text-white rounded px-2 py-1.5 disabled:opacity-50"
+                  className="flex-1 font-medium bg-forest-600 hover:bg-forest-700 text-white rounded px-2 py-1.5 disabled:opacity-50"
                 >
                   Record
                 </button>
-                <button onClick={() => setShowPaymentForm(false)} className="border border-stone-300 rounded px-2 py-1.5">
+                <button
+                  onClick={() => setShowPaymentForm(false)}
+                  className="border border-sand-300 rounded px-2 py-1.5"
+                >
                   ✕
                 </button>
               </div>
-              {recordPayment.isError && <p className="col-span-2 sm:col-span-4 text-red-600">{(recordPayment.error as Error).message}</p>}
+              {recordPayment.isError && (
+                <p className="col-span-2 sm:col-span-4 text-status-full">
+                  {(recordPayment.error as Error).message}
+                </p>
+              )}
             </div>
           ))}
       </div>
 
       {/* Documents */}
-      <div className="flex flex-wrap items-center gap-3 text-xs border-t border-stone-100 pt-3">
-        <a href={`/api/bookings/public/${booking.ticketToken}/receipt.pdf`} target="_blank" rel="noreferrer" className="text-clay-700 underline">
+      <div className="flex flex-wrap items-center gap-3 text-xs border-t border-sand-100 pt-3">
+        <a
+          href={`/api/bookings/public/${booking.ticketToken}/receipt.pdf`}
+          target="_blank"
+          rel="noreferrer"
+          className="text-forest-700 underline"
+        >
           Receipt PDF
         </a>
         {ticketReady && (
-          <a href={`/api/bookings/public/${booking.ticketToken}/eticket.pdf`} target="_blank" rel="noreferrer" className="text-clay-700 underline">
+          <a
+            href={`/api/bookings/public/${booking.ticketToken}/eticket.pdf`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-forest-700 underline"
+          >
             E-ticket PDF
           </a>
         )}
-        <button onClick={downloadManifest} className="text-clay-700 underline" title="Internal only — includes passport numbers, never shown to the client">
+        <button
+          onClick={downloadManifest}
+          className="text-forest-700 underline"
+          title="Internal only — includes passport numbers, never shown to the client"
+        >
           Guide manifest PDF
         </button>
-        <a href={statusUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline break-all">
+        <a
+          href={statusUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-forest-700 underline break-all"
+        >
           {statusUrl}
         </a>
       </div>
-      {manifestError && <p className="text-xs text-red-600">{manifestError}</p>}
+      {manifestError && (
+        <p className="text-xs text-status-full">{manifestError}</p>
+      )}
     </div>
   );
 }

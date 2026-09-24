@@ -1,4 +1,4 @@
-// A single flat acacia-tree silhouette — the iconic wide, flat-topped
+// A single flat moss-tree silhouette — the iconic wide, flat-topped
 // "umbrella thorn" canopy of the East African savanna, instantly readable
 // even small. Two plain shapes (a flattened ellipse canopy + a tapered
 // trunk), no photo, costs nothing over the network.

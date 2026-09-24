@@ -19,8 +19,31 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// SQLite — a single file on disk (apps/api/prisma/dev.db by default), no
+// external database service to run, sign up for, or pay for. Nothing here
+// is Supabase or any hosted provider; DATABASE_URL just points at a local
+// file, e.g. "file:./dev.db". Several things this connector doesn't
+// support that the earlier Postgres schema used, all worked around below
+// rather than needing a different database:
+//  - native array columns (String[]) — every such field is now a String
+//    column holding JSON text (e.g. `["a","b"]`), transparently
+//    (de)serialized by PrismaService's json-field middleware (see
+//    apps/api/src/prisma/prisma.service.ts) so application code still
+//    reads/writes a real string[].
+//  - the Json scalar type itself isn't supported either (not just native
+//    arrays) — every field that held structured data (price breakdowns, AI
+//    job output, integration config/secrets, audit metadata, frozen
+//    itinerary snapshots) is a String column with the same transparent
+//    JSON (de)serialization.
+//  - native enums — SQLite has none. Every enum field is a String column;
+//    the shared TS enum in @safaribrain/shared is the actual source of
+//    truth for valid values, validated at the application layer exactly
+//    the way Integration.provider/category already worked before this
+//    pass.
+//  - the @db.Decimal(...) native-type attribute (removed; the Decimal
+//    scalar type itself still works identically, backed by decimal.js).
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -28,20 +51,32 @@ datasource db {
 // Identity (§6, §3)
 // ---------------------------------------------------------------------------
 
-enum UserRole {
-  CLIENT
-  GUIDE
-  OPERATOR
-  AGENT
-  ADMIN
-}
+// UserRole enum values from @safaribrain/shared: "CLIENT" | "GUIDE" |
+// "OPERATOR" | "AGENT" | "ADMIN". Plain String, not a native Prisma enum —
+// SQLite has no enum type; the shared TS enum is the actual source of
+// truth for valid values, validated at the application layer the same way
+// Integration.provider/category already did before this pass.
+
+// A tourism-professional Organization is one of three kinds — a company
+// running its own trips (OPERATOR, the only kind that existed before this),
+// an individual freelance guide selling their own itineraries directly, or
+// a travel agent/agency who resells other orgs' inventory (Trade
+// marketplace). Modeling a guide/agent as an Organization rather than a
+// standalone concept is deliberate reuse: every existing org-scoped
+// feature (TourTemplate, Departure/Seat booking, Vehicle fleet, CRM,
+// marketplace listing, verification) works for a solo guide's one-person
+// "company" with zero new code.
+// OrganizationKind enum values: "OPERATOR" | "GUIDE" | "AGENT" — see the
+// UserRole note above on why this is a plain String, not a native enum.
 
 model Organization {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   name      String
+  kind      String            @default("OPERATOR")
   country   String // ISO 3166-1 alpha-2, e.g. "TZ" — §1.7 country is config, not a rebuild
   currency  String // ISO 4217, e.g. "TZS"
   verified  Boolean  @default(false) // Trust domain (§6) collapsed onto the org for Phase 0/1
+  bio       String? // Public profile mini-site (§7) — an operator/guide's own words, shown above their listings
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -52,11 +87,18 @@ model Organization {
   places        Place[]
   integrations  Integration[]
   bookings      Booking[]
+  agentBookings Booking[] @relation("AgentBooking")
   aiJobs        AiJob[]
   departures    Departure[]
   reviews       Review[]
   vehicles      Vehicle[]
   supplierConfirmations SupplierConfirmation[]
+  vehicleRentalListings   VehicleRentalListing[]
+  rentalAgreementsAsOwner VehicleRentalAgreement[] @relation("RentalOwner")
+  rentalAgreementsAsRenter VehicleRentalAgreement[] @relation("RentalRenter")
+  conversationsA Conversation[] @relation("ConversationOrgA")
+  conversationsB Conversation[] @relation("ConversationOrgB")
+  messages       Message[]
 
   @@map("organizations")
 }
@@ -90,8 +132,13 @@ model Membership {
   id             String   @id @default(cuid())
   userId         String
   organizationId String
-  role           UserRole
-  permissions    String[] // Permission enum values from @safaribrain/shared
+  role           String // UserRole enum value
+  // Permission enum values from @safaribrain/shared, stored as JSON text
+  // (e.g. `["MANAGE_FLEET","APPROVE_QUOTE"]`) and transparently
+  // (de)serialized to/from a real string[] by PrismaService's json-field
+  // middleware — application code reads/writes this as an array, same as
+  // before SQLite.
+  permissions    String   @default("[]")
   createdAt      DateTime @default(now())
 
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -105,23 +152,10 @@ model Membership {
 // CRM (§6, §4.7)
 // ---------------------------------------------------------------------------
 
-enum LeadSourceChannel {
-  WEB
-  WHATSAPP
-  EMAIL
-  PHONE
-  REFERRAL
-  WALK_IN
-}
-
-enum RequestStage {
-  NEW
-  QUOTED
-  NEGOTIATING
-  BOOKED
-  COMPLETED
-  LOST
-}
+// LeadSourceChannel enum values: "WEB" | "WHATSAPP" | "EMAIL" | "PHONE" |
+// "REFERRAL" | "WALK_IN".
+// RequestStage enum values: "NEW" | "QUOTED" | "NEGOTIATING" | "BOOKED" |
+// "COMPLETED" | "LOST".
 
 // A deduplicated client/prospect. One contact can raise multiple enquiries
 // over time — §10 acceptance criterion 1 ("one deduplicated contact").
@@ -150,13 +184,13 @@ model EnquiryRequest {
   organizationId String
   contactId      String
   ownerId        String? // salesperson assigned — §4.7 "team assignment"
-  source         LeadSourceChannel
-  stage          RequestStage      @default(NEW)
+  source         String            // LeadSourceChannel enum value
+  stage          String            @default("NEW") // RequestStage enum value
   partySize      Int               @default(1)
   budgetTier     String? // e.g. "BUDGET" | "MID" | "LUXURY" — free text for now, enum once marketplace filters land
   preferredStart DateTime?
   preferredEnd   DateTime?
-  interests      String[]
+  interests      String            @default("[]") // string[], JSON text — see Membership.permissions
   notes          String?
   consentGiven   Boolean           @default(false) // §9 non-functional: consent/retention records
   createdAt      DateTime          @default(now())
@@ -195,7 +229,7 @@ model Task {
 model PipelineEvent {
   id        String       @id @default(cuid())
   requestId String
-  stage     RequestStage
+  stage     String // RequestStage enum value
   note      String?
   createdAt DateTime     @default(now())
 
@@ -242,7 +276,7 @@ model ParkFeeRule {
   residency    String // "RESIDENT" | "NON_RESIDENT" | "EAST_AFRICAN"
   ageBand      String? // "ADULT" | "CHILD" | "INFANT"
   unit         String // "PER_PERSON_PER_DAY" | "PER_VEHICLE_PER_ENTRY" | ...
-  amount       Decimal   @db.Decimal(12, 2)
+  amount       Decimal
   currency     String
   sourceUrl    String? // §4.5 "source URL, retrieval timestamp"
   sourceAsOf   DateTime // "price as of [date]" shown to travelers — §4.5
@@ -262,8 +296,8 @@ model ParkFeeRule {
 model PriceSnapshot {
   id           String   @id @default(cuid())
   quoteId      String   @unique
-  breakdown    Json // PriceBreakdownDto shape from @safaribrain/shared
-  totalPrice   Decimal  @db.Decimal(12, 2)
+  breakdown    String // PriceBreakdownDto shape from @safaribrain/shared, JSON text — see Membership.permissions
+  totalPrice   Decimal
   currency     String
   frozenAt     DateTime @default(now())
 
@@ -320,7 +354,7 @@ model ItineraryDay {
   placeId           String?
   title             String
   description       String?
-  mealsIncluded     String[] // "BREAKFAST" | "LUNCH" | "DINNER"
+  mealsIncluded     String   @default("[]") // "BREAKFAST" | "LUNCH" | "DINNER"[], JSON text — see Membership.permissions
 
   templateVersion TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
   place           Place?          @relation(fields: [placeId], references: [id])
@@ -333,16 +367,8 @@ model ItineraryDay {
 // Sales documents (§6, §4.4, §9) — quote → approval → proposal → acceptance
 // ---------------------------------------------------------------------------
 
-enum QuoteStatus {
-  DRAFT
-  PENDING_APPROVAL
-  APPROVED
-  SENT
-  ACCEPTED
-  CHANGES_REQUESTED
-  EXPIRED
-  DECLINED
-}
+// QuoteStatus enum values: "DRAFT" | "PENDING_APPROVAL" | "APPROVED" |
+// "SENT" | "ACCEPTED" | "CHANGES_REQUESTED" | "EXPIRED" | "DECLINED".
 
 model Quote {
   id                String      @id @default(cuid())
@@ -350,9 +376,9 @@ model Quote {
   tourTemplateId    String?
   templateVersionId String? // pinned so a later template edit can't change what's already quoted
   residency         String      @default("NON_RESIDENT")
-  status            QuoteStatus @default(DRAFT)
+  status            String      @default("DRAFT") // QuoteStatus enum value
   currency          String
-  marginPercent     Decimal     @db.Decimal(5, 2) @default(0)
+  marginPercent     Decimal @default(0)
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
@@ -373,8 +399,8 @@ model QuoteVersion {
   id         String   @id @default(cuid())
   quoteId    String
   versionNo  Int
-  breakdown  Json // PriceBreakdownDto — the live (mutable-until-accepted) working copy
-  totalPrice Decimal  @db.Decimal(12, 2)
+  breakdown  String // PriceBreakdownDto, JSON text — the live (mutable-until-accepted) working copy
+  totalPrice Decimal
   createdAt  DateTime @default(now())
 
   quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
@@ -425,14 +451,9 @@ model ProposalLink {
 // table rather than needing a redesign.
 // ---------------------------------------------------------------------------
 
-enum BookingStatus {
-  PENDING
-  CONFIRMED
-  PAID
-  ACTIVE
-  COMPLETED
-  CANCELLED
-}
+// BookingStatus enum values: "PENDING" | "CONFIRMED" | "PAID" | "ACTIVE" |
+// "COMPLETED" | "CANCELLED".
+// BookingChannel enum values: "RETAIL" | "TRADE".
 
 model Booking {
   id             String        @id @default(cuid())
@@ -443,10 +464,20 @@ model Booking {
   // Departure sets departureId instead and never has a quote at all.
   quoteId        String?       @unique
   departureId    String?
-  status         BookingStatus @default(PENDING)
+  status         String        @default("PENDING") // BookingStatus enum value
   currency       String
-  totalPrice     Decimal       @db.Decimal(12, 2)
-  amountPaid     Decimal       @db.Decimal(12, 2) @default(0)
+  totalPrice     Decimal
+  amountPaid     Decimal @default(0)
+  // Trade marketplace: a TRADE booking was made by another organization's
+  // agent buying seats on this departure at netPricePerSeat on behalf of
+  // their own end client, rather than the traveler booking directly.
+  // `retailTotalPrice` snapshots what the same seats would have cost at
+  // the departure's public price at booking time, so the agent's margin
+  // (retailTotalPrice - totalPrice) is knowable later even after the
+  // departure's own prices change.
+  channel             String @default("RETAIL") // BookingChannel enum value
+  agentOrganizationId String?
+  retailTotalPrice    Decimal?
   // The e-ticket/QR and the public trip-status page both key off this
   // token rather than the booking's own id, same pattern as ProposalLink.
   ticketToken    String        @unique @default(cuid())
@@ -463,6 +494,7 @@ model Booking {
   updatedAt      DateTime      @updatedAt
 
   organization  Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agentOrganization Organization?      @relation("AgentBooking", fields: [agentOrganizationId], references: [id])
   request       EnquiryRequest         @relation(fields: [requestId], references: [id])
   quote         Quote?                 @relation(fields: [quoteId], references: [id])
   departure     Departure?             @relation(fields: [departureId], references: [id])
@@ -484,11 +516,7 @@ model Booking {
 // Departure hold expiry uses) rather than needing a background job.
 // ---------------------------------------------------------------------------
 
-enum VehicleStatus {
-  ACTIVE
-  MAINTENANCE
-  RETIRED
-}
+// VehicleStatus enum values: "ACTIVE" | "MAINTENANCE" | "RETIRED".
 
 model Vehicle {
   id                 String        @id @default(cuid())
@@ -496,7 +524,7 @@ model Vehicle {
   name               String // e.g. "Land Cruiser #2"
   registrationNumber String
   capacity           Int
-  status             VehicleStatus @default(ACTIVE)
+  status             String        @default("ACTIVE") // VehicleStatus enum value
   insuranceExpiry    DateTime?
   inspectionExpiry   DateTime?
   notes              String?
@@ -505,8 +533,109 @@ model Vehicle {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   bookings     Booking[]
+  rentalListing VehicleRentalListing?
 
   @@map("vehicles")
+}
+
+// ---------------------------------------------------------------------------
+// Vehicle rental exchange (§6 Trade) — an owner org publishes a fleet
+// vehicle as rentable by other organizations (another operator short a
+// vehicle, a guide who owns no vehicle, an agent assembling a package),
+// under a per-rental agreement rather than an instant "book now" — vehicle
+// hire in this business is a negotiated commercial arrangement (deposit,
+// driver, fuel/mileage terms), not a fixed retail price like a seat.
+// ---------------------------------------------------------------------------
+
+// UNLISTED keeps a vehicle out of the shared exchange browse list entirely
+// — the owner can still hand a specific renter the listing id directly
+// (a "private network" arrangement) without building a separate ACL.
+// RentalListingVisibility enum values: "LISTED" | "UNLISTED".
+
+model VehicleRentalListing {
+  id             String                  @id @default(cuid())
+  organizationId String
+  vehicleId      String                  @unique // one active listing per vehicle, keeps availability unambiguous
+  dailyRate      Decimal
+  currency       String
+  visibility     String                  @default("LISTED") // RentalListingVisibility enum value
+  notes          String?
+  active         Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  agreements   VehicleRentalAgreement[]
+
+  @@map("vehicle_rental_listings")
+}
+
+// RentalAgreementStatus enum values: "PENDING" | "ACCEPTED" | "DECLINED" |
+// "CANCELLED".
+
+model VehicleRentalAgreement {
+  id                 String                 @id @default(cuid())
+  listingId          String
+  ownerOrganizationId  String // denormalized from listing at request time so ownership survives a listing edit
+  renterOrganizationId String
+  startDate          DateTime
+  endDate            DateTime
+  dailyRate          Decimal // snapshot from the listing at request time
+  totalPrice         Decimal
+  currency           String
+  message            String?
+  status             String                 @default("PENDING") // RentalAgreementStatus enum value
+  respondedAt        DateTime?
+  createdAt          DateTime               @default(now())
+
+  listing          VehicleRentalListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  ownerOrganization  Organization       @relation("RentalOwner", fields: [ownerOrganizationId], references: [id])
+  renterOrganization Organization       @relation("RentalRenter", fields: [renterOrganizationId], references: [id])
+
+  @@map("vehicle_rental_agreements")
+}
+
+// ---------------------------------------------------------------------------
+// Org-to-org messaging (§6 Trade "chat like a WhatsApp group... knowing
+// each other") — deliberately B2B only: an operator, guide, agent, or
+// vehicle owner messaging another organization they're trading with.
+// Traveler-facing chat is explicitly NOT built here — travelers have no
+// platform account at all in this system (public tokenized links only,
+// §5), so a "safari group chat" for them would need a traveler identity
+// model built first; see ARCHITECTURE.md "Deliberately not built yet".
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id String @id @default(cuid())
+  // Unordered pair of organizations, normalized (orgAId < orgBId as
+  // strings) at creation time so "start a conversation" is idempotent —
+  // reuses the existing thread instead of creating a duplicate one.
+  organizationAId String
+  organizationBId String
+  createdAt       DateTime @default(now())
+
+  organizationA Organization @relation("ConversationOrgA", fields: [organizationAId], references: [id], onDelete: Cascade)
+  organizationB Organization @relation("ConversationOrgB", fields: [organizationBId], references: [id], onDelete: Cascade)
+  messages      Message[]
+
+  @@unique([organizationAId, organizationBId])
+  @@map("conversations")
+}
+
+model Message {
+  id                String   @id @default(cuid())
+  conversationId    String
+  senderOrganizationId String
+  senderUserId      String?
+  body              String
+  createdAt         DateTime @default(now())
+
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderOrganization Organization @relation(fields: [senderOrganizationId], references: [id])
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
 }
 
 // ---------------------------------------------------------------------------
@@ -515,11 +644,8 @@ model Vehicle {
 // yes from before a trip is truly ready, independent of payment status.
 // ---------------------------------------------------------------------------
 
-enum SupplierConfirmationStatus {
-  PENDING
-  CONFIRMED
-  DECLINED
-}
+// SupplierConfirmationStatus enum values: "PENDING" | "CONFIRMED" |
+// "DECLINED".
 
 model SupplierConfirmation {
   id             String                     @id @default(cuid())
@@ -527,7 +653,7 @@ model SupplierConfirmation {
   bookingId      String
   supplierName   String
   supplierType   String? // free text, e.g. "Lodge", "Park permit", "Transport"
-  status         SupplierConfirmationStatus @default(PENDING)
+  status         String                     @default("PENDING") // SupplierConfirmationStatus enum value
   referenceCode  String?
   neededBy       DateTime?
   confirmedAt    DateTime?
@@ -551,11 +677,7 @@ model SupplierConfirmation {
 // it with no new code.
 // ---------------------------------------------------------------------------
 
-enum DepartureStatus {
-  OPEN
-  CLOSED
-  CANCELLED
-}
+// DepartureStatus enum values: "OPEN" | "CLOSED" | "CANCELLED".
 
 model Departure {
   id             String          @id @default(cuid())
@@ -563,9 +685,18 @@ model Departure {
   tourTemplateId String
   departureDate  DateTime
   currency       String
-  pricePerSeat   Decimal         @db.Decimal(12, 2)
+  pricePerSeat   Decimal
   totalSeats     Int
-  status         DepartureStatus @default(OPEN)
+  status         String          @default("OPEN") // DepartureStatus enum value
+  // Trade/wholesale marketplace (§6 Trade, operator/guide/agent B2B): a
+  // departure only appears to other organizations' agents once the owning
+  // org opts it in (tradeVisible) and sets a net seat price lower than
+  // pricePerSeat — same "off by default, deliberate opt-in" pattern as
+  // TourTemplate.publiclyListed. Seats themselves are a single shared pool
+  // — a seat sold via the trade channel is the exact same Seat row as one
+  // sold retail, so there is no separate "trade inventory" to double-book.
+  netPricePerSeat Decimal?
+  tradeVisible    Boolean        @default(false)
   createdAt      DateTime        @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -576,18 +707,8 @@ model Departure {
   @@map("departures")
 }
 
-enum SeatType {
-  WINDOW
-  AISLE
-  FRONT
-  ACCESSIBLE
-}
-
-enum SeatStatus {
-  AVAILABLE
-  HELD
-  BOOKED
-}
+// SeatType enum values: "WINDOW" | "AISLE" | "FRONT" | "ACCESSIBLE".
+// SeatStatus enum values: "AVAILABLE" | "HELD" | "BOOKED".
 
 // Atomicity for hold acquisition lives in DeparturesService (Postgres
 // SERIALIZABLE transaction, not a DB constraint — Postgres has no native
@@ -599,8 +720,8 @@ model Seat {
   id          String     @id @default(cuid())
   departureId String
   label       String // e.g. "1A"
-  type        SeatType
-  status      SeatStatus @default(AVAILABLE)
+  type        String // SeatType enum value
+  status      String @default("AVAILABLE") // SeatStatus enum value
   heldUntil   DateTime?
   holderToken String? // opaque, client-generated — same trust model as ProposalLink/Booking.ticketToken
   bookingId   String?
@@ -619,7 +740,7 @@ model Seat {
 model BookingTermsSnapshot {
   id            String   @id @default(cuid())
   bookingId     String   @unique
-  itinerary     Json // { title, durationDays, days: [...] } snapshot of the accepted template version
+  itinerary     String // { title, durationDays, days: [...] } snapshot of the accepted template version, JSON text
   termsMarkdown String?
   frozenAt      DateTime @default(now())
 
@@ -641,18 +762,15 @@ model Traveler {
   @@map("travelers")
 }
 
-enum PaymentMethod {
-  BANK_TRANSFER
-  CASH
-  MOBILE_MONEY_MANUAL
-}
+// PaymentMethod enum values: "BANK_TRANSFER" | "CASH" |
+// "MOBILE_MONEY_MANUAL".
 
 model Payment {
   id           String        @id @default(cuid())
   bookingId    String
-  amount       Decimal       @db.Decimal(12, 2)
+  amount       Decimal
   currency     String
-  method       PaymentMethod
+  method       String // PaymentMethod enum value
   reference    String? // bank transfer reference, receipt number, etc.
   recordedById String?
   createdAt    DateTime      @default(now())
@@ -673,11 +791,7 @@ model Payment {
 // principle extended to reputation, not just price/content).
 // ---------------------------------------------------------------------------
 
-enum ReviewStatus {
-  PENDING
-  PUBLISHED
-  REJECTED
-}
+// ReviewStatus enum values: "PENDING" | "PUBLISHED" | "REJECTED".
 
 model Review {
   id             String       @id @default(cuid())
@@ -691,7 +805,7 @@ model Review {
   rating         Int // 1-5
   title          String?
   body           String?
-  status         ReviewStatus @default(PENDING)
+  status         String       @default("PENDING") // ReviewStatus enum value
   operatorReply  String?
   moderatedById  String?
   moderatedAt    DateTime?
@@ -713,29 +827,18 @@ model Review {
 // rather than only in audit_log, so the provenance travels with the draft.
 // ---------------------------------------------------------------------------
 
-enum AiJobKind {
-  ITINERARY_DRAFT
-  PROPOSAL_REWRITE
-  TRANSLATION
-  FEE_EXTRACTION
-  NEWS_SUMMARY
-  REPLY_DRAFT
-}
-
-enum AiJobApprovalStatus {
-  DRAFTED
-  APPROVED
-  REJECTED
-}
+// AiJobKind enum values: "ITINERARY_DRAFT" | "PROPOSAL_REWRITE" |
+// "TRANSLATION" | "FEE_EXTRACTION" | "NEWS_SUMMARY" | "REPLY_DRAFT".
+// AiJobApprovalStatus enum values: "DRAFTED" | "APPROVED" | "REJECTED".
 
 model AiJob {
   id            String              @id @default(cuid())
   organizationId String
-  kind          AiJobKind
-  status        AiJobApprovalStatus @default(DRAFTED)
+  kind          String              // AiJobKind enum value
+  status        String              @default("DRAFTED") // AiJobApprovalStatus enum value
   prompt        String
   model         String // provider/model identifier actually used — §9 provenance
-  output        Json // the raw drafted content, never applied anywhere until approved
+  output        String // the raw drafted content (JSON text), never applied anywhere until approved
   requestedById String?
   decidedById   String?
   decidedAt     DateTime?
@@ -775,8 +878,8 @@ model Integration {
   category       String // IntegrationCategory enum value — denormalized for filtering
   displayName    String
   enabled        Boolean             @default(false)
-  config         Json                @default("{}")
-  secrets        Json                @default("{}")
+  config         String              @default("{}") // JSON text — see Membership.permissions
+  secrets        String              @default("{}") // JSON text — see Membership.permissions
   createdById    String?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
@@ -804,7 +907,7 @@ model AuditLog {
   action         String // e.g. "quote.approve", "quote.accept"
   entityType     String
   entityId       String
-  metadata       Json?
+  metadata       String? // JSON text — see Membership.permissions
   createdAt      DateTime @default(now())
 
   actor User? @relation(fields: [actorId], references: [id])

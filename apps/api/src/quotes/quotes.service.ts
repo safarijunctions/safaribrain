@@ -5,6 +5,8 @@ import { AuditService } from "../audit/audit.service";
 import { PricingService } from "../pricing/pricing.service";
 import { CreateQuoteDto } from "./dto/create-quote.dto";
 import { ReviseQuoteDto } from "./dto/revise-quote.dto";
+import { toJsonField, fromJsonField } from "../common/json-field";
+import { parseQuote } from "../common/quote-json";
 
 // Implements §7 Phase 1 gate: "enquiry → priced, approved quote → sent
 // proposal → acceptance, fully audited" and §10 acceptance criteria 3-6.
@@ -58,7 +60,7 @@ export class QuotesService {
         currency: dto.currency,
         marginPercent: dto.markupPercent,
         status: QuoteStatus.DRAFT,
-        versions: { create: [{ versionNo: 1, breakdown: breakdown as any, totalPrice: breakdown.totalClientPrice }] },
+        versions: { create: [{ versionNo: 1, breakdown: toJsonField(breakdown), totalPrice: breakdown.totalClientPrice }] },
       },
       include: { versions: true },
     });
@@ -69,7 +71,7 @@ export class QuotesService {
     });
 
     await this.audit.record({ organizationId, actorId, action: "quote.create", entityType: "Quote", entityId: quote.id });
-    return quote;
+    return parseQuote(quote);
   }
 
   async revise(organizationId: string, actorId: string | undefined, quoteId: string, dto: ReviseQuoteDto) {
@@ -94,7 +96,7 @@ export class QuotesService {
 
     const nextVersionNo = Math.max(...quote.versions.map((v) => v.versionNo)) + 1;
     await this.prisma.quoteVersion.create({
-      data: { quoteId, versionNo: nextVersionNo, breakdown: breakdown as any, totalPrice: breakdown.totalClientPrice },
+      data: { quoteId, versionNo: nextVersionNo, breakdown: toJsonField(breakdown), totalPrice: breakdown.totalClientPrice },
     });
     const updated = await this.prisma.quote.update({
       where: { id: quoteId },
@@ -103,7 +105,7 @@ export class QuotesService {
     });
 
     await this.audit.record({ organizationId, actorId, action: "quote.revise", entityType: "Quote", entityId: quoteId, metadata: { versionNo: nextVersionNo } });
-    return updated;
+    return parseQuote(updated);
   }
 
   async submitForApproval(organizationId: string, actorId: string | undefined, quoteId: string) {
@@ -174,14 +176,18 @@ export class QuotesService {
 
     // Once accepted, always serve the frozen snapshot — never the live
     // (possibly since-edited) template/quote data — §1.8.
-    const breakdown = (link.quote.priceSnapshot
-      ? link.quote.priceSnapshot.breakdown
-      : link.quote.versions[0].breakdown) as unknown as PriceBreakdownDto;
+    const breakdown = fromJsonField<PriceBreakdownDto>(
+      link.quote.priceSnapshot ? link.quote.priceSnapshot.breakdown : link.quote.versions[0].breakdown,
+      {} as PriceBreakdownDto,
+    );
 
+    const templateVersion = link.quote.tourTemplate?.versions[0];
     return {
       status: link.quote.status,
       contactName: link.quote.request.contact.fullName,
-      itinerary: link.quote.tourTemplate?.versions[0],
+      itinerary: templateVersion
+        ? { ...templateVersion, days: templateVersion.days.map((d) => ({ ...d, mealsIncluded: fromJsonField<string[]>(d.mealsIncluded, []) })) }
+        : undefined,
       breakdown: clientSafeBreakdown(breakdown), // never leak internal cost lines to the client — §10.3
       isFrozen: Boolean(link.quote.priceSnapshot),
     };
@@ -241,7 +247,9 @@ export class QuotesService {
       await tx.priceSnapshot.create({
         data: {
           quoteId: link.quoteId,
-          breakdown: latestVersion.breakdown as any,
+          // Already JSON text on the QuoteVersion row — copied verbatim
+          // rather than parse-then-restringify.
+          breakdown: latestVersion.breakdown,
           totalPrice: latestVersion.totalPrice,
           currency: link.quote.currency,
         },
@@ -260,17 +268,17 @@ export class QuotesService {
           totalPrice: latestVersion.totalPrice,
           termsSnapshot: {
             create: {
-              itinerary: {
+              itinerary: toJsonField({
                 title: link.quote.tourTemplate?.title ?? null,
                 durationDays: link.quote.tourTemplate?.durationDays ?? null,
                 days: templateVersion?.days.map((d) => ({
                   dayNumber: d.dayNumber,
                   title: d.title,
                   description: d.description,
-                  mealsIncluded: d.mealsIncluded,
+                  mealsIncluded: fromJsonField<string[]>(d.mealsIncluded, []),
                   place: d.place ? { name: d.place.name } : null,
                 })) ?? [],
-              } as any,
+              }),
               termsMarkdown: templateVersion?.termsMarkdown ?? null,
             },
           },

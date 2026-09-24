@@ -77,7 +77,11 @@ export interface Quote {
   versions: QuoteVersion[];
   approvals: Approval[];
   priceSnapshot?: { totalPrice: string; frozenAt: string } | null;
-  proposalLink?: { token: string; openedAt?: string; acceptedAt?: string } | null;
+  proposalLink?: {
+    token: string;
+    openedAt?: string;
+    acceptedAt?: string;
+  } | null;
 }
 
 export interface EnquiryRequestDetail extends EnquiryRequestSummary {
@@ -109,7 +113,12 @@ export interface ItineraryDay {
 }
 
 export interface TourTemplateDetail extends TourTemplateSummary {
-  versions: { id: string; versionNumber: number; termsMarkdown?: string; days: ItineraryDay[] }[];
+  versions: {
+    id: string;
+    versionNumber: number;
+    termsMarkdown?: string;
+    days: ItineraryDay[];
+  }[];
 }
 
 export interface DepartureSeatSummary {
@@ -125,6 +134,8 @@ export interface Departure {
   totalSeats: number;
   status: "OPEN" | "CLOSED" | "CANCELLED";
   seats: DepartureSeatSummary[];
+  netPricePerSeat?: string | null;
+  tradeVisible?: boolean;
 }
 
 export interface PublicDeparture {
@@ -133,7 +144,24 @@ export interface PublicDeparture {
   currency: string;
   pricePerSeat: string;
   totalSeats: number;
-  tourTemplate: { title: string; organization: { name: string; country: string } };
+  tourTemplate: {
+    title: string;
+    organization: { id: string; name: string; country: string };
+  };
+}
+
+export interface LiveDeparture {
+  id: string;
+  departureDate: string;
+  currency: string;
+  pricePerSeat: string;
+  totalSeats: number;
+  seatsAvailable: number;
+  tourTemplate: {
+    title: string;
+    durationDays: number;
+    organization: { id: string; name: string; country: string };
+  };
 }
 
 export interface SeatMapSeat {
@@ -142,6 +170,11 @@ export interface SeatMapSeat {
   type: "WINDOW" | "AISLE" | "FRONT" | "ACCESSIBLE";
   status: "AVAILABLE" | "HELD" | "BOOKED";
   isMine: boolean;
+}
+
+export interface DepartureGroup {
+  count: number;
+  names: string[];
 }
 
 export interface AiDraftDay {
@@ -174,11 +207,54 @@ export interface MarketplaceListingSummary {
   title: string;
   summary?: string | null;
   durationDays: number;
-  organization: { name: string; country: string };
+  organization: { id: string; name: string; country: string };
 }
 
 export interface MarketplaceListingDetail extends MarketplaceListingSummary {
-  versions: { id: string; versionNumber: number; termsMarkdown?: string | null; days: ItineraryDay[] }[];
+  versions: {
+    id: string;
+    versionNumber: number;
+    termsMarkdown?: string | null;
+    days: ItineraryDay[];
+  }[];
+}
+
+export interface OrganizationReview {
+  id: string;
+  reviewerName: string;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  operatorReply?: string | null;
+  createdAt: string;
+}
+
+export interface LatestReview {
+  id: string;
+  reviewerName: string;
+  rating: number;
+  title?: string | null;
+  body?: string | null;
+  createdAt: string;
+  organization: { id: string; name: string; country: string };
+  tourTemplate?: { id: string; title: string } | null;
+}
+
+export interface OrganizationProfile {
+  organization: {
+    id: string;
+    name: string;
+    kind: string;
+    country: string;
+    bio?: string | null;
+    createdAt: string;
+  };
+  templates: (MarketplaceListingSummary & {
+    versions: { id: string; versionNumber: number }[];
+  })[];
+  reviews: OrganizationReview[];
+  averageRating: number | null;
+  reviewCount: number;
 }
 
 export interface FeeRule {
@@ -231,7 +307,13 @@ export interface OrgMember {
   role: string;
   permissions: string[];
   createdAt: string;
-  user: { id: string; fullName: string; email: string; phone?: string; createdAt: string };
+  user: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    createdAt: string;
+  };
 }
 
 export interface AuditLogEntry {
@@ -319,7 +401,11 @@ export interface Booking {
   vehicle?: Vehicle | null;
   travelers: Traveler[];
   payments: Payment[];
-  termsSnapshot?: { itinerary: BookingItinerary; termsMarkdown?: string | null; frozenAt: string } | null;
+  termsSnapshot?: {
+    itinerary: BookingItinerary;
+    termsMarkdown?: string | null;
+    frozenAt: string;
+  } | null;
   review?: { status: string; rating: number } | null;
   supplierConfirmations: SupplierConfirmation[];
 }
@@ -360,6 +446,82 @@ export interface ReviewSummary {
   average: number | null;
   count: number;
   reviews: PublishedReview[];
+}
+
+export interface TradeDeparture {
+  id: string;
+  departureDate: string;
+  currency: string;
+  pricePerSeat: string;
+  netPricePerSeat?: string | null;
+  tradeVisible: boolean;
+  totalSeats: number;
+  status: "OPEN" | "CLOSED" | "CANCELLED";
+  tourTemplate: {
+    title: string;
+    durationDays: number;
+    organization: { name: string; country: string };
+  };
+  seats?: DepartureSeatSummary[];
+}
+
+export interface TradeBooking {
+  id: string;
+  totalPrice: string;
+  retailTotalPrice?: string | null;
+  currency: string;
+  status: string;
+  createdAt: string;
+  organization: { name: string; country: string };
+  departure?: { departureDate: string; tourTemplate: { title: string } } | null;
+  travelers: Traveler[];
+}
+
+export interface TradeOrganization {
+  id: string;
+  name: string;
+  kind: "OPERATOR" | "GUIDE" | "AGENT";
+  country: string;
+}
+
+export interface RentalListing {
+  id: string;
+  dailyRate: string;
+  currency: string;
+  visibility: "LISTED" | "UNLISTED";
+  active: boolean;
+  notes?: string | null;
+  vehicle: Vehicle;
+  organization?: { name: string; country: string };
+}
+
+export interface RentalAgreement {
+  id: string;
+  ownerOrganizationId: string;
+  renterOrganizationId: string;
+  startDate: string;
+  endDate: string;
+  dailyRate: string;
+  totalPrice: string;
+  currency: string;
+  message?: string | null;
+  status: "PENDING" | "ACCEPTED" | "DECLINED" | "CANCELLED";
+  listing: { vehicle: Vehicle };
+  ownerOrganization: { name: string };
+  renterOrganization: { name: string };
+}
+
+export interface ConversationSummary {
+  id: string;
+  counterpart: { id: string; name: string; kind: string };
+  lastMessage: { body: string; createdAt: string } | null;
+}
+
+export interface Message {
+  id: string;
+  senderOrganizationId: string;
+  body: string;
+  createdAt: string;
 }
 
 export interface ModerationReview {

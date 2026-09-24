@@ -3,11 +3,18 @@
 @tailwind utilities;
 
 body {
-  @apply bg-stone-50 text-stone-900 font-sans antialiased;
+  @apply bg-ivory text-earth-800 font-sans antialiased;
 }
 
 h1,
 h2,
 h3 {
   @apply font-display;
+}
+
+/* A single consistent input style for the editorial search/booking forms
+   — plain borders, no rounded-pill inputs, per the "no template feeling"
+   direction. */
+.atlas-input {
+  @apply w-full bg-transparent border-0 border-b border-sand-300 text-sm text-earth-800 py-1.5 focus:outline-none focus:border-forest-600 transition;
 }

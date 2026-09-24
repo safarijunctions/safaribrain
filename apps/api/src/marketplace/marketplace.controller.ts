@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { MarketplaceService } from "./marketplace.service";
 import { MarketplaceEnquiryDto } from "./dto/marketplace-enquiry.dto";
+import { CustomSafariEnquiryDto } from "./dto/custom-safari-enquiry.dto";
 import { DeparturesService } from "../departures/departures.service";
 import { HoldSeatsDto } from "../departures/dto/hold-seats.dto";
 import { ConfirmSeatBookingDto } from "../departures/dto/confirm-booking.dto";
@@ -40,13 +41,30 @@ export class MarketplaceController {
     return this.departures.listPublicForTemplate(id);
   }
 
+  // Static "live" segment declared ahead of the dynamic :id route below,
+  // same reasoning as the web router's departureSeatMapRoute ordering —
+  // otherwise /marketplace/departures/live would be swallowed as a
+  // department id lookup.
+  @Get("departures/live")
+  listLiveDepartures() {
+    return this.marketplace.listLiveDepartures();
+  }
+
   @Get("departures/:id")
   getDeparture(@Param("id") id: string) {
     return this.departures.getPublicDeparture(id);
   }
 
+  @Get("departures/:id/group")
+  getGroup(@Param("id") id: string) {
+    return this.departures.getPublicGroup(id);
+  }
+
   @Get("departures/:id/seats")
-  getSeatMap(@Param("id") id: string, @Query("holderToken") holderToken?: string) {
+  getSeatMap(
+    @Param("id") id: string,
+    @Query("holderToken") holderToken?: string,
+  ) {
     return this.departures.getSeatMap(id, holderToken);
   }
 
@@ -63,5 +81,22 @@ export class MarketplaceController {
   @Get("templates/:id/reviews")
   listReviews(@Param("id") id: string) {
     return this.reviews.listPublicForTemplate(id);
+  }
+
+  @Get("organizations/:id")
+  getOrganizationProfile(@Param("id") id: string) {
+    return this.marketplace.getOrganizationProfile(id);
+  }
+
+  @Get("reviews/latest")
+  listLatestReviews(@Query("limit") limit?: string) {
+    return this.marketplace.listLatestReviews(
+      limit ? Number(limit) : undefined,
+    );
+  }
+
+  @Post("organizations/:id/custom-enquiry")
+  enquireCustom(@Param("id") id: string, @Body() dto: CustomSafariEnquiryDto) {
+    return this.marketplace.enquireCustom(id, dto);
   }
 }

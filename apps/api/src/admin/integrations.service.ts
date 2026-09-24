@@ -3,6 +3,7 @@ import { INTEGRATION_CATEGORY_BY_PROVIDER, IntegrationProvider } from "@safaribr
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
 import { UpsertIntegrationDto } from "./dto/upsert-integration.dto";
+import { toJsonField, fromJsonField } from "../common/json-field";
 
 // Lets an admin add/rotate provider credentials (payment, messaging, AI)
 // from the Admin Portal after the app ships, instead of the team hardcoding
@@ -31,8 +32,8 @@ export class IntegrationsService {
 
     // Merge secrets rather than replace, so updating one credential doesn't
     // require the admin to re-paste every other secret for that provider.
-    const mergedSecrets = { ...(existing?.secrets as Record<string, unknown> | undefined), ...(dto.secrets ?? {}) };
-    const mergedConfig = { ...(existing?.config as Record<string, unknown> | undefined), ...(dto.config ?? {}) };
+    const mergedSecrets = { ...fromJsonField<Record<string, unknown>>(existing?.secrets, {}), ...(dto.secrets ?? {}) };
+    const mergedConfig = { ...fromJsonField<Record<string, unknown>>(existing?.config, {}), ...(dto.config ?? {}) };
 
     const row = await this.prisma.integration.upsert({
       where: { organizationId_provider: { organizationId, provider: dto.provider } },
@@ -42,15 +43,15 @@ export class IntegrationsService {
         category,
         displayName: dto.displayName,
         enabled: dto.enabled ?? false,
-        config: mergedConfig as any,
-        secrets: mergedSecrets as any,
+        config: toJsonField(mergedConfig),
+        secrets: toJsonField(mergedSecrets),
         createdById: actorId,
       },
       update: {
         displayName: dto.displayName,
         enabled: dto.enabled,
-        config: mergedConfig as any,
-        secrets: mergedSecrets as any,
+        config: toJsonField(mergedConfig),
+        secrets: toJsonField(mergedSecrets),
       },
     });
 
@@ -92,7 +93,12 @@ export class IntegrationsService {
   // need the real secret values to call a provider's API — never exposed
   // over HTTP.
   async getEnabledForCategory(organizationId: string, category: string) {
-    return this.prisma.integration.findMany({ where: { organizationId, category, enabled: true } });
+    const rows = await this.prisma.integration.findMany({ where: { organizationId, category, enabled: true } });
+    return rows.map((row) => ({
+      ...row,
+      config: fromJsonField<Record<string, unknown>>(row.config, {}),
+      secrets: fromJsonField<Record<string, unknown>>(row.secrets, {}),
+    }));
   }
 }
 
@@ -103,19 +109,20 @@ function toSafeIntegration(row: {
   category: string;
   displayName: string;
   enabled: boolean;
-  config: unknown;
-  secrets: unknown;
+  config: string;
+  secrets: string;
   createdAt: Date;
   updatedAt: Date;
 }) {
-  const secretKeys = Object.keys((row.secrets as Record<string, unknown>) ?? {});
+  const secrets = fromJsonField<Record<string, unknown>>(row.secrets, {});
+  const secretKeys = Object.keys(secrets);
   return {
     id: row.id,
     provider: row.provider as IntegrationProvider,
     category: row.category,
     displayName: row.displayName,
     enabled: row.enabled,
-    config: row.config,
+    config: fromJsonField<Record<string, unknown>>(row.config, {}),
     secretsConfigured: secretKeys.length > 0,
     secretKeys,
     createdAt: row.createdAt,

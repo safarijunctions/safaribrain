@@ -7,6 +7,16 @@ import { RecordPaymentDto } from "./dto/record-payment.dto";
 import { UpdateLogisticsDto } from "./dto/update-logistics.dto";
 import { AddSupplierConfirmationDto } from "./dto/add-supplier-confirmation.dto";
 import { UpdateSupplierConfirmationDto } from "./dto/update-supplier-confirmation.dto";
+import { fromJsonField } from "../common/json-field";
+
+// termsSnapshot.itinerary is JSON text (see schema.prisma's datasource
+// comment on why SQLite has no Json column type) — every booking read
+// path in this service goes through this single mapper so callers get a
+// real object back, exactly like before SQLite.
+function withParsedTermsSnapshot<T extends { termsSnapshot: { itinerary: string } | null }>(booking: T) {
+  if (!booking.termsSnapshot) return booking;
+  return { ...booking, termsSnapshot: { ...booking.termsSnapshot, itinerary: fromJsonField<unknown>(booking.termsSnapshot.itinerary, null) } };
+}
 
 const INCLUDE = {
   termsSnapshot: true,
@@ -32,23 +42,24 @@ export class BookingsService {
   ) {}
 
   async getForRequest(organizationId: string, requestId: string) {
-    return this.prisma.booking.findFirst({
+    const booking = await this.prisma.booking.findFirst({
       where: { requestId, organizationId },
       include: INCLUDE,
       orderBy: { createdAt: "desc" },
     });
+    return booking ? withParsedTermsSnapshot(booking) : booking;
   }
 
   async getOwned(organizationId: string, id: string) {
     const booking = await this.prisma.booking.findFirst({ where: { id, organizationId }, include: INCLUDE });
     if (!booking) throw new NotFoundException("Booking not found");
-    return booking;
+    return withParsedTermsSnapshot(booking);
   }
 
   async getByToken(token: string) {
     const booking = await this.prisma.booking.findUnique({ where: { ticketToken: token }, include: INCLUDE });
     if (!booking) throw new NotFoundException("Booking not found");
-    return booking;
+    return withParsedTermsSnapshot(booking);
   }
 
   async addTraveler(organizationId: string, actorId: string | undefined, bookingId: string, dto: AddTravelerDto) {
@@ -104,11 +115,13 @@ export class BookingsService {
           ? BookingStatus.CONFIRMED
           : booking.status;
 
-    const updated = await this.prisma.booking.update({
-      where: { id: booking.id },
-      data: { amountPaid: newAmountPaid, status: nextStatus },
-      include: INCLUDE,
-    });
+    const updated = withParsedTermsSnapshot(
+      await this.prisma.booking.update({
+        where: { id: booking.id },
+        data: { amountPaid: newAmountPaid, status: nextStatus },
+        include: INCLUDE,
+      }),
+    );
 
     await this.audit.record({
       organizationId,
@@ -142,7 +155,7 @@ export class BookingsService {
       include: INCLUDE,
     });
     await this.audit.record({ organizationId, actorId, action: "booking.update_logistics", entityType: "Booking", entityId: booking.id, metadata: dto as Record<string, unknown> });
-    return updated;
+    return withParsedTermsSnapshot(updated);
   }
 
   // A per-booking checklist of the lodges/permits/transport an operator
@@ -201,6 +214,6 @@ export class BookingsService {
       include: INCLUDE,
     });
     await this.audit.record({ organizationId, actorId, action: "booking.mark_completed", entityType: "Booking", entityId: booking.id });
-    return updated;
+    return withParsedTermsSnapshot(updated);
   }
 }

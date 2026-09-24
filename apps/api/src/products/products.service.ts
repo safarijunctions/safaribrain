@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AuditService } from "../audit/audit.service";
+import { fromJsonField } from "../common/json-field";
 
 @Injectable()
 export class ProductsService {
@@ -8,6 +9,39 @@ export class ProductsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
   ) {}
+
+  // The org's own words on its public operator/guide profile mini-site
+  // (MarketplaceController.getOrganizationProfile) — self-service, no
+  // admin approval needed, same trust model as flipping a template's
+  // publiclyListed flag.
+  getProfile(organizationId: string) {
+    return this.prisma.organization.findUniqueOrThrow({
+      where: { id: organizationId },
+      select: {
+        id: true,
+        name: true,
+        kind: true,
+        country: true,
+        bio: true,
+        verified: true,
+      },
+    });
+  }
+
+  updateProfile(organizationId: string, bio: string) {
+    return this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { bio },
+      select: {
+        id: true,
+        name: true,
+        kind: true,
+        country: true,
+        bio: true,
+        verified: true,
+      },
+    });
+  }
 
   listTemplates(organizationId: string) {
     return this.prisma.tourTemplate.findMany({
@@ -24,22 +58,50 @@ export class ProductsService {
         versions: {
           orderBy: { versionNumber: "desc" },
           take: 1,
-          include: { days: { include: { place: true }, orderBy: { dayNumber: "asc" } } },
+          include: {
+            days: { include: { place: true }, orderBy: { dayNumber: "asc" } },
+          },
         },
       },
     });
     if (!template) throw new NotFoundException("Tour template not found");
-    return template;
+    return {
+      ...template,
+      versions: template.versions.map((v) => ({
+        ...v,
+        days: v.days.map((d) => ({
+          ...d,
+          mealsIncluded: fromJsonField<string[]>(d.mealsIncluded, []),
+        })),
+      })),
+    };
   }
 
   // Phase 3 (§7) marketplace: an operator opts a template in/out of public
   // browsing — off by default, so nothing appears to travelers just by
   // existing in the catalog.
-  async setListed(organizationId: string, actorId: string | undefined, id: string, publiclyListed: boolean) {
-    const existing = await this.prisma.tourTemplate.findFirst({ where: { id, organizationId } });
+  async setListed(
+    organizationId: string,
+    actorId: string | undefined,
+    id: string,
+    publiclyListed: boolean,
+  ) {
+    const existing = await this.prisma.tourTemplate.findFirst({
+      where: { id, organizationId },
+    });
     if (!existing) throw new NotFoundException("Tour template not found");
-    const template = await this.prisma.tourTemplate.update({ where: { id }, data: { publiclyListed } });
-    await this.audit.record({ organizationId, actorId, action: "product.template.set_listed", entityType: "TourTemplate", entityId: id, metadata: { publiclyListed } });
+    const template = await this.prisma.tourTemplate.update({
+      where: { id },
+      data: { publiclyListed },
+    });
+    await this.audit.record({
+      organizationId,
+      actorId,
+      action: "product.template.set_listed",
+      entityType: "TourTemplate",
+      entityId: id,
+      metadata: { publiclyListed },
+    });
     return template;
   }
 }

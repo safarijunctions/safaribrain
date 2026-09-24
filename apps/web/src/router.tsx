@@ -1,5 +1,15 @@
-import { createRootRoute, createRoute, createRouter, Outlet, Navigate } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  Navigate,
+} from "@tanstack/react-router";
 import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { TradePage } from "./pages/TradePage";
+import { VehicleExchangePage } from "./pages/VehicleExchangePage";
+import { MessagesPage } from "./pages/MessagesPage";
 import { CrmInboxPage } from "./pages/CrmInboxPage";
 import { RequestDetailPage } from "./pages/RequestDetailPage";
 import { ProposalPage } from "./pages/ProposalPage";
@@ -7,6 +17,8 @@ import { BookingStatusPage } from "./pages/BookingStatusPage";
 import { MarketplacePage } from "./pages/MarketplacePage";
 import { MarketplaceListingPage } from "./pages/MarketplaceListingPage";
 import { DepartureSeatMapPage } from "./pages/DepartureSeatMapPage";
+import { OperatorProfilePage } from "./pages/OperatorProfilePage";
+import { CustomSafariPage } from "./pages/CustomSafariPage";
 import { AdminPage } from "./pages/AdminPage";
 import { isAuthenticated } from "./lib/auth";
 import { AppShell } from "./components/AppShell";
@@ -27,10 +39,17 @@ const loginRoute = createRoute({
   component: LoginPage,
 });
 
+const registerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/register",
+  component: RegisterPage,
+});
+
 const appLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "app-layout",
-  component: () => (isAuthenticated() ? <AppShell /> : <Navigate to="/login" />),
+  component: () =>
+    isAuthenticated() ? <AppShell /> : <Navigate to="/login" />,
 });
 
 const crmInboxRoute = createRoute({
@@ -52,6 +71,28 @@ const adminRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: "/admin",
   component: AdminPage,
+});
+
+// §6 Trade — any authenticated organization (operator, guide, or agent),
+// not admin-only: a solo guide has no separate "admin" account to log in
+// as, so these live at the top level of the authenticated app, same as
+// /crm.
+const tradeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/trade",
+  component: TradePage,
+});
+
+const vehicleExchangeRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/vehicle-exchange",
+  component: VehicleExchangePage,
+});
+
+const messagesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: "/messages",
+  component: MessagesPage,
 });
 
 // Public — no auth, per §5 "mobile, low-bandwidth, WhatsApp-first". A client
@@ -94,15 +135,41 @@ const departureSeatMapRoute = createRoute({
   component: DepartureSeatMapPage,
 });
 
+// Public — the operator/guide mini-site (design brief). Static
+// "operators" segment, no collision with marketplace's /$id template
+// route since they live under different top-level paths.
+const operatorProfileRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/operators/$id",
+  component: OperatorProfilePage,
+});
+
+// Public — the custom-safari conversational builder (design brief).
+const customSafariRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/custom-safari",
+  component: CustomSafariPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
-  appLayoutRoute.addChildren([crmInboxRoute, requestDetailRoute, adminRoute]),
+  registerRoute,
+  appLayoutRoute.addChildren([
+    crmInboxRoute,
+    requestDetailRoute,
+    adminRoute,
+    tradeRoute,
+    vehicleExchangeRoute,
+    messagesRoute,
+  ]),
   proposalRoute,
   bookingStatusRoute,
   marketplaceRoute,
   marketplaceListingRoute,
   departureSeatMapRoute,
+  operatorProfileRoute,
+  customSafariRoute,
 ]);
 
 export const router = createRouter({ routeTree });

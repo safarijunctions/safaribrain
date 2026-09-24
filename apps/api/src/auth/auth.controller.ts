@@ -1,6 +1,7 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/login.dto";
+import { RegisterDto } from "./dto/register.dto";
 
 @Controller("auth")
 export class AuthController {
@@ -9,5 +10,13 @@ export class AuthController {
   @Post("login")
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto.email, dto.password);
+  }
+
+  // Public, no auth — same reasoning as every other unauthenticated route
+  // in this app: someone joining as a guide/agent/operator has no account
+  // yet to log in with.
+  @Post("register")
+  register(@Body() dto: RegisterDto) {
+    return this.auth.register(dto);
   }
 }
