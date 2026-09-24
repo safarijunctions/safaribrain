@@ -8,7 +8,7 @@ export interface LlmCompletion {
 
 // Anthropic Messages API request/response shapes, kept minimal — just
 // enough for the two callers this service has (a single-shot completion,
-// and Jarvis's multi-turn tool-use loop). Not a general SDK wrapper.
+// and Noki's multi-turn tool-use loop). Not a general SDK wrapper.
 export interface LlmMessagesRequest {
   system?: string;
   messages: unknown[];
@@ -45,7 +45,7 @@ export class LlmService {
     return { model: res.model, text };
   }
 
-  // Raw multi-turn / tool-use call, used by Jarvis's agentic loop — the
+  // Raw multi-turn / tool-use call, used by Noki's agentic loop — the
   // caller owns the conversation state and tool-execution logic, this just
   // carries credentials and shapes the HTTP call.
   async messages(organizationId: string, req: LlmMessagesRequest): Promise<LlmMessagesResponse> {

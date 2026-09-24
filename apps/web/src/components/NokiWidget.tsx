@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { api, ApiError } from "../lib/api";
 
-interface JarvisTurn {
+interface NokiTurn {
   role: "user" | "assistant";
   content: string;
 }
@@ -40,7 +40,7 @@ function getSpeechRecognitionCtor(): (new () => SpeechRecognitionLike) | undefin
 const speechSupported = typeof window !== "undefined" && Boolean(getSpeechRecognitionCtor());
 const speechSynthesisSupported = typeof window !== "undefined" && "speechSynthesis" in window;
 
-// Must match (or stay under) the API's JarvisMessageDto.messages @ArrayMaxSize
+// Must match (or stay under) the API's NokiMessageDto.messages @ArrayMaxSize
 // — the client sends only the most recent slice of a long conversation so a
 // deep chat never hits that cap and dead-ends every future message with a
 // raw validation error. Full history still stays visible in the panel; only
@@ -55,12 +55,12 @@ const MAX_SENT_TURNS = 20;
 // Voice is a pure front-end layer on top of the same text endpoint: the mic
 // button transcribes speech to text client-side (Web Speech API) and sends
 // it exactly like a typed message; "speak replies" reads the same reply
-// text back out loud. Neither touches the API — Jarvis itself never hears
+// text back out loud. Neither touches the API — Noki itself never hears
 // audio or knows the difference.
-export function JarvisWidget() {
+export function NokiWidget() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [turns, setTurns] = useState<JarvisTurn[]>([]);
+  const [turns, setTurns] = useState<NokiTurn[]>([]);
   const [listening, setListening] = useState(false);
   const [speakReplies, setSpeakReplies] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -68,7 +68,7 @@ export function JarvisWidget() {
   const transcriptRef = useRef("");
 
   const ask = useMutation({
-    mutationFn: (messages: JarvisTurn[]) => api.post<{ reply: string; model: string }>("/ai/jarvis/message", { messages }),
+    mutationFn: (messages: NokiTurn[]) => api.post<{ reply: string; model: string }>("/ai/noki/message", { messages }),
   });
 
   useEffect(() => {
@@ -76,7 +76,7 @@ export function JarvisWidget() {
   }, [turns, ask.isPending]);
 
   // Stop listening / talking the moment the panel closes or unmounts, so
-  // Jarvis never keeps the mic open or a voice going in the background.
+  // Noki never keeps the mic open or a voice going in the background.
   useEffect(() => {
     if (!open) {
       recognitionRef.current?.stop();
@@ -108,7 +108,7 @@ export function JarvisWidget() {
     setInput("");
     ask.mutate(next.slice(-MAX_SENT_TURNS), {
       onSuccess: (res) => respond(res.reply),
-      onError: (err) => respond(err instanceof ApiError ? err.message : "Something went wrong reaching Jarvis."),
+      onError: (err) => respond(err instanceof ApiError ? err.message : "Something went wrong reaching Noki."),
     });
   }
 
@@ -167,7 +167,7 @@ export function JarvisWidget() {
         className="fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-gradient-to-r from-clay-600 to-clay-700 hover:from-clay-700 hover:to-clay-800 text-white text-sm font-medium rounded-full pl-3 pr-4 py-2.5 shadow-lg shadow-clay-900/20 transition"
       >
         <span aria-hidden className="text-base">✦</span>
-        Jarvis
+        Noki
       </button>
     );
   }
@@ -176,7 +176,7 @@ export function JarvisWidget() {
     <div className="fixed bottom-5 right-5 z-40 w-[22rem] max-w-[calc(100vw-2.5rem)] h-[28rem] max-h-[calc(100vh-4rem)] bg-white border border-stone-200 rounded-xl shadow-2xl shadow-clay-900/20 flex flex-col overflow-hidden">
       <div className="flex items-center justify-between bg-gradient-to-r from-clay-800 via-clay-700 to-acacia-800 text-white px-4 py-3 shrink-0">
         <div>
-          <p className="font-display font-semibold text-sm leading-tight">Jarvis</p>
+          <p className="font-display font-semibold text-sm leading-tight">Noki</p>
           <p className="text-[11px] text-white/70 leading-tight">Read-only — asks, never acts</p>
         </div>
         <div className="flex items-center gap-1">
@@ -204,7 +204,7 @@ export function JarvisWidget() {
         {turns.length === 0 && (
           <p className="text-xs text-stone-500 px-1">
             Ask about enquiries, quotes, or bookings — e.g. "what's the status of Laura Bennett's enquiry" or "how many
-            quotes are pending approval". {speechSupported ? "Type, or tap the mic to talk to it." : "Jarvis can only look things up, not change anything."}
+            quotes are pending approval". {speechSupported ? "Type, or tap the mic to talk to it." : "Noki can only look things up, not change anything."}
           </p>
         )}
         {turns.map((t, i) => (
@@ -231,8 +231,8 @@ export function JarvisWidget() {
             onClick={toggleListening}
             disabled={ask.isPending}
             aria-pressed={listening}
-            aria-label={listening ? "Stop listening" : "Talk to Jarvis"}
-            title={listening ? "Stop listening" : "Talk to Jarvis"}
+            aria-label={listening ? "Stop listening" : "Talk to Noki"}
+            title={listening ? "Stop listening" : "Talk to Noki"}
             className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition disabled:opacity-50 ${
               listening ? "bg-red-600 text-white animate-pulse" : "border border-stone-300 hover:bg-stone-50"
             }`}
@@ -242,7 +242,7 @@ export function JarvisWidget() {
         )}
         <input
           className="flex-1 border border-stone-300 rounded-lg px-3 py-2 text-sm"
-          placeholder={listening ? "Listening…" : "Ask Jarvis…"}
+          placeholder={listening ? "Listening…" : "Ask Noki…"}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {

@@ -4,10 +4,10 @@ import { LlmService } from "../ai/llm.service";
 import { DashboardService } from "../admin/dashboard.service";
 import { CrmService } from "../crm/crm.service";
 import { BookingsService } from "../bookings/bookings.service";
-import { JarvisTurnDto } from "./dto/jarvis-message.dto";
+import { NokiTurnDto } from "./dto/noki-message.dto";
 
 const SYSTEM_PROMPT = [
-  "You are Jarvis, the assistant embedded inside SafariBrain, a safari tour",
+  "You are Noki, the assistant embedded inside SafariBrain, a safari tour",
   "operator's internal sales/ops system. You are talking to a staff member",
   "(sales operator, manager, or admin), never a client.",
   "",
@@ -86,8 +86,8 @@ const TOOLS = [
 const MAX_TOOL_ITERATIONS = 6;
 
 @Injectable()
-export class JarvisService {
-  private readonly logger = new Logger(JarvisService.name);
+export class NokiService {
+  private readonly logger = new Logger(NokiService.name);
 
   constructor(
     private readonly llm: LlmService,
@@ -96,7 +96,7 @@ export class JarvisService {
     private readonly bookings: BookingsService,
   ) {}
 
-  async ask(organizationId: string, turns: JarvisTurnDto[]): Promise<{ reply: string; model: string }> {
+  async ask(organizationId: string, turns: NokiTurnDto[]): Promise<{ reply: string; model: string }> {
     const messages: unknown[] = turns.map((t) => ({ role: t.role, content: t.content }));
 
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
@@ -134,7 +134,7 @@ export class JarvisService {
       const result = await this.executeTool(organizationId, name, input);
       return { type: "tool_result", tool_use_id: toolUseId, content: JSON.stringify(result ?? null).slice(0, 8000) };
     } catch (err) {
-      this.logger.warn(`Jarvis tool "${name}" failed: ${(err as Error).message}`);
+      this.logger.warn(`Noki tool "${name}" failed: ${(err as Error).message}`);
       return {
         type: "tool_result",
         tool_use_id: toolUseId,

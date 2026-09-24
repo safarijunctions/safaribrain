@@ -46,7 +46,7 @@ export class BookingsService {
     return booking;
   }
 
-  // Read-only lookup for Jarvis (§ai/jarvis) — filterable so the assistant
+  // Read-only lookup for Noki (§ai/noki) — filterable so the assistant
   // can answer "is the Bennett booking paid" without listing every booking
   // in the org first.
   search(organizationId: string, opts: { query?: string; status?: BookingStatus } = {}) {

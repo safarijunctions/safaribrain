@@ -80,7 +80,7 @@ export class CrmService {
     });
   }
 
-  // Read-only lookup for Jarvis (§ai/jarvis) — same shape as listRequests
+  // Read-only lookup for Noki (§ai/noki) — same shape as listRequests
   // but filterable, so the assistant doesn't have to pull every request in
   // the org to answer "what's Laura Bennett's enquiry stage".
   search(organizationId: string, opts: { query?: string; stage?: RequestStage } = {}) {

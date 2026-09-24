@@ -122,13 +122,13 @@ Sign in as **admin** and open the "Admin" link in the header:
 Admins can also reassign a request's owner directly from its detail page
 (useful when the original owner is unavailable and a client is waiting).
 
-## Jarvis
+## Noki
 
 A read-only assistant available from a floating button on every authenticated
-page (`apps/web/src/components/JarvisWidget.tsx`). Ask it things like
+page (`apps/web/src/components/NokiWidget.tsx`). Ask it things like
 "what stage is Laura Bennett's enquiry in" or "how many quotes are pending
 approval" and it answers by actually calling into the CRM, bookings, and
-dashboard services (`apps/api/src/jarvis/`) via an Anthropic tool-use loop —
+dashboard services (`apps/api/src/noki/`) via an Anthropic tool-use loop —
 same `LLM_PROVIDER` integration key as the AI Drafts feature, no separate
 setup. It only has read tools (`dashboard_overview`, `search_requests`,
 `get_request_detail`, `search_bookings`, `get_booking_detail`); there is no
@@ -148,7 +148,7 @@ hide themselves in browsers that don't support them (Firefox, most
 non-Chromium browsers); typing always works everywhere.
 
 Because SafariBrain's marketplace lets anyone submit an enquiry with no
-login, Jarvis's tools can surface free text a member of the public typed
+login, Noki's tools can surface free text a member of the public typed
 themselves (a contact's name, enquiry notes). Its system prompt explicitly
 tells the model to treat that text as data to report, never as instructions
 to follow, and to flag anything that reads like an attempt to manipulate it
